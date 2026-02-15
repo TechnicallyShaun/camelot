@@ -39,12 +39,12 @@ npm install
 npm start
 ```
 
-Then open `http://localhost:3000` in your browser.
+Then open `http://localhost:1187` in your browser.
 
 ## Architecture
 
 ```
-Browser (localhost:3000)
+Browser (localhost:1187)
     ↕ WebSocket
 Camelot Server (Node.js)
     ├── Agent Spawner → copilot -p "..." --yolo
@@ -53,16 +53,6 @@ Camelot Server (Node.js)
     ├── SQLite → agent runs, logs, tickets
     └── SDP Bridge → reads .sdp/plans/*
 ```
-
-## Naming
-
-| Codename | Component |
-|----------|-----------|
-| **Camelot** | The platform |
-| **Knights** | AI agents (Copilot, Claude) |
-| **Round Table** | Multi-agent session view |
-| **Armoury** | Tools & integrations |
-| **Guinevere** | Director AI (future) |
 
 ## License
 
