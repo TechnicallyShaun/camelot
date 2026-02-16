@@ -33,7 +33,7 @@ jobs:
         run: |
           mkdir -p release
           cp -r dist/ release/dist/
-          cp -r ui/ release/ui/
+          cp -r public/ release/public/
           cp package.json package-lock.json README.md CONTRIBUTING.md release/
           cd release && tar -czf ../camelot-${{ github.ref_name }}.tar.gz .
 
