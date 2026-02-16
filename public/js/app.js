@@ -466,17 +466,31 @@ class CamelotApp {
       termData.skillPrompt = prompt;
     }
 
-    // After terminal connects, paste the prompt
-    setTimeout(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        // Send the prompt as terminal input after the agent starts
-        this.ws.send(JSON.stringify({
-          type: 'terminal-input',
-          sessionId: sessionId,
-          data: prompt + '\n'
-        }));
-      }
-    }, 2000); // Wait for agent to start
+    // After terminal connects, wait for agent to be ready then paste the prompt
+    // We watch for terminal data — once we see output, the agent is likely ready
+    const injectPrompt = () => {
+      const termData = this.terminals.get(sessionId);
+      if (!termData) return;
+      
+      let prompted = false;
+      const checkAndInject = () => {
+        if (prompted) return;
+        prompted = true;
+        setTimeout(() => {
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+              type: 'terminal-input',
+              sessionId: sessionId,
+              data: prompt + '\n'
+            }));
+          }
+        }, 5000); // Wait 5s after first output for agent to fully initialize
+      };
+      
+      // Fallback: inject after 8s regardless
+      setTimeout(checkAndInject, 8000);
+    };
+    injectPrompt();
   }
 
   renderDashboardTickets() {
