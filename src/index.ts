@@ -8,6 +8,7 @@ import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, Sqlite
 import { FileSystemSkillPublisher } from "./db/skill-publisher.js";
 import { FileSystemSdpPlanReader } from "./db/sdp-plan-reader.js";
 import { DatabaseDailySummaryGenerator } from "./db/daily-summary-generator.js";
+import { FileSystemDailySummaryExporter } from "./db/daily-summary-exporter.js";
 import { ProcessAgentSpawner } from "./agents/spawner.js";
 import { createApp } from "./server/app.js";
 import { TerminalManager } from "./terminal/manager.js";
@@ -46,6 +47,9 @@ const sdpPlanReader = new FileSystemSdpPlanReader(tickets, logger);
 // Create daily summary generator
 const dailySummaryGenerator = new DatabaseDailySummaryGenerator(ticketActivity, tickets, agentRuns, logger);
 
+// Create daily summary exporter
+const dailySummaryExporter = new FileSystemDailySummaryExporter(dailySummaryGenerator, logger);
+
 // Create agent spawner
 const spawner = new ProcessAgentSpawner(logger);
 
@@ -66,6 +70,8 @@ const app = createApp({
   sdpPlansPath: config.sdpPlansPath,
   ticketActivity,
   dailySummaryGenerator,
+  dailySummaryExporter,
+  dailySummaryExportPath: config.dailySummaryExportPath,
   logger 
 });
 

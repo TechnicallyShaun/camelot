@@ -9,6 +9,7 @@ export interface CamelotConfig {
   readonly defaultAgent: string;
   readonly sdpPlansPath: string | null;
   readonly skillsPublishPath: string;
+  readonly dailySummaryExportPath: string;
   readonly defaultTerminalCwd: string;
 }
 
@@ -20,6 +21,7 @@ const DEFAULTS: CamelotConfig = {
   defaultAgent: "copilot",
   sdpPlansPath: null,
   skillsPublishPath: "./skills",
+  dailySummaryExportPath: "./daily-summaries",
   defaultTerminalCwd: process.cwd(),
 };
 

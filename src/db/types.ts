@@ -185,6 +185,10 @@ export interface DailySummaryGenerator {
   generateSummary(date: string): Promise<DailySummary>;
 }
 
+export interface DailySummaryExporter {
+  exportToFile(date: string, outputDir: string): Promise<string>;
+}
+
 export interface ToolRepository {
   create(tool: Omit<Tool, 'id' | 'createdAt' | 'updatedAt'>): Tool;
   findAll(): Tool[];

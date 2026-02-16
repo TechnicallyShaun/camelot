@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, SkillPublisher, SdpPlanReader, TicketActivityRepository, DailySummaryGenerator, TicketStage } from "../db/types.js";
+import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, SkillPublisher, SdpPlanReader, TicketActivityRepository, DailySummaryGenerator, DailySummaryExporter, TicketStage } from "../db/types.js";
 import type { Logger } from "../logger.js";
 
 export interface RoutesDeps {
@@ -15,6 +15,8 @@ export interface RoutesDeps {
   readonly sdpPlansPath: string | null;
   readonly ticketActivity: TicketActivityRepository;
   readonly dailySummaryGenerator: DailySummaryGenerator;
+  readonly dailySummaryExporter: DailySummaryExporter;
+  readonly dailySummaryExportPath: string;
   readonly logger: Logger;
 }
 
@@ -210,6 +212,37 @@ export function createApiRouter(deps: RoutesDeps): Router {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       deps.logger.error({ error, date }, "Failed to generate daily summary");
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.post("/daily-summary/export", async (req: Request, res: Response) => {
+    const { date, outputDir } = req.body as { date?: string; outputDir?: string };
+    
+    if (!date || typeof date !== 'string') {
+      res.status(400).json({ error: "date is required (format: YYYY-MM-DD)" });
+      return;
+    }
+
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD" });
+      return;
+    }
+
+    const exportPath = outputDir || deps.dailySummaryExportPath;
+
+    try {
+      const filePath = await deps.dailySummaryExporter.exportToFile(date, exportPath);
+      res.json({
+        success: true,
+        filePath,
+        message: `Daily summary for ${date} exported to ${filePath}`
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      deps.logger.error({ error, date, exportPath }, "Failed to export daily summary");
       res.status(500).json({ error: message });
     }
   });
