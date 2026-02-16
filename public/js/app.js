@@ -773,12 +773,18 @@ class CamelotApp {
     }
 
     const createdDate = new Date(skill.createdAt).toLocaleDateString();
+    const hasSetupSteps = skill.content.includes('## Setup') || skill.content.includes('## Prerequisites');
+    const hasParams = /\{\{[^}]+\}\}/.test(skill.content);
     detail.innerHTML = `
       <div class="detail-header">
         <div>
           <h2 class="detail-title">${skill.name}</h2>
           ${skill.description ? `<div class="detail-subtitle">${skill.description}</div>` : ''}
-          <div class="detail-meta">${skill.fileName} · Created ${createdDate}</div>
+          <div class="detail-meta">
+            ${skill.fileName} · Created ${createdDate}
+            ${hasSetupSteps ? ' · <span class="skill-badge setup">Setup Guide</span>' : ''}
+            ${hasParams ? ' · <span class="skill-badge param">Parameterised</span>' : ''}
+          </div>
         </div>
         <div class="detail-actions">
           <button class="btn btn-sm btn-secondary" onclick="camelot.showSkillDetail('${skillId}', true)">Edit</button>
