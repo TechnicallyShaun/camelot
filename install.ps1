@@ -82,7 +82,7 @@ Write-Host ""
 Write-Host "[4/5] Installing npm dependencies..." -ForegroundColor Cyan
 Push-Location $INSTALL_DIR
 try {
-    npm install --production 2>&1 | Out-Null
+    npm install --omit=dev 2>&1 | Out-Null
     Write-Host "  npm install complete" -ForegroundColor Green
 
     # Rebuild native modules for this platform

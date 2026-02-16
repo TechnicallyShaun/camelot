@@ -69,7 +69,7 @@ done
 echo ""
 echo "[4/5] Installing npm dependencies..."
 cd "$INSTALL_DIR"
-npm install --production --silent
+npm install --omit=dev --silent
 echo "  ✓ npm install complete"
 
 echo "  Rebuilding native modules..."
