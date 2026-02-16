@@ -518,6 +518,24 @@ class CamelotApp {
     }).join('');
   }
 
+  updateTerminalContextBar(termData) {
+    const bar = document.getElementById('terminalContextBar');
+    const text = document.getElementById('terminalContextText');
+    if (!bar || !text) return;
+
+    if (termData.ticketId || termData.projectId) {
+      const ticket = termData.ticketId ? this.tickets.find(t => t.id === termData.ticketId) : null;
+      const project = termData.projectId ? this.projects.find(p => p.id === termData.projectId) : null;
+      const parts = [];
+      if (ticket) parts.push(`🎫 #${ticket.id} ${ticket.title}`);
+      if (project) parts.push(`📁 ${project.name}`);
+      text.textContent = parts.join('  ·  ');
+      bar.style.display = 'flex';
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+
   selectTicket(ticketId) {
     this.selectedTicketId = ticketId;
     const ticket = this.tickets.find(t => t.id === ticketId);
@@ -1565,6 +1583,9 @@ class CamelotApp {
       terminalData.tab.classList.remove('terminal-tab-alert');
       terminalData.container.classList.add('active');
       this.activeTerminal = sessionId;
+      
+      // Update context bar
+      this.updateTerminalContextBar(terminalData);
       
       setTimeout(() => {
         terminalData.fitAddon.fit();
