@@ -1456,10 +1456,22 @@ class CamelotApp {
     // Form submissions
     this.setupFormHandlers();
 
-    // ESC key to close modals
+    // ESC key to close modals + Ctrl+1-0 for terminal tabs
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         this.closeAllModals();
+      }
+      // Ctrl+1 through Ctrl+0 to switch terminal tabs
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey) {
+        const num = parseInt(e.key, 10);
+        if (!isNaN(num) && e.key >= '0' && e.key <= '9') {
+          e.preventDefault();
+          const index = num === 0 ? 9 : num - 1; // Ctrl+0 = 10th tab
+          const sessionIds = Array.from(this.terminals.keys());
+          if (index < sessionIds.length) {
+            this.switchTerminal(sessionIds[index]);
+          }
+        }
       }
     });
   }
