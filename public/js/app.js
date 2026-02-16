@@ -14,6 +14,10 @@ class CamelotApp {
     this.agents = [];
     this.selectedAgent = null; // Currently selected agent for new terminals
     this.projects = []; // Projects list
+    this.skills = []; // Skills list
+    this.tools = []; // Tools list
+    this.editingSkillId = null; // Currently editing skill ID
+    this.editingToolId = null; // Currently editing tool ID
     
     this.init();
   }
@@ -190,6 +194,22 @@ class CamelotApp {
       });
     }
 
+    // New skill button
+    const newSkillBtn = document.getElementById('newSkillBtn');
+    if (newSkillBtn) {
+      newSkillBtn.addEventListener('click', () => {
+        this.openNewSkillModal();
+      });
+    }
+
+    // New tool button
+    const newToolBtn = document.getElementById('newToolBtn');
+    if (newToolBtn) {
+      newToolBtn.addEventListener('click', () => {
+        this.openNewToolModal();
+      });
+    }
+
     // Terminal launcher button (if it exists)
     const terminalLauncherBtn = document.getElementById('terminalLauncherBtn');
     if (terminalLauncherBtn) {
@@ -265,6 +285,8 @@ class CamelotApp {
       dashboard: 'Dashboard',
       tickets: 'Tickets',
       projects: 'Projects',
+      skills: '⚔️ Skills',
+      tools: '🔧 Tools',
       agents: 'Agents',
       terminal: 'Terminal'
     };
@@ -299,6 +321,8 @@ class CamelotApp {
       dashboard: 'Dashboard',
       tickets: 'Tickets',
       projects: 'Projects',
+      skills: '⚔️ Skills',
+      tools: '🔧 Tools',
       agents: 'Agents',
       terminal: 'Terminal'
     };
@@ -456,8 +480,24 @@ class CamelotApp {
       });
     }
 
+    const skillForm = document.getElementById('skillForm');
+    if (skillForm) {
+      skillForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.handleSkillSubmission(e.target);
+      });
+    }
+
+    const toolForm = document.getElementById('toolForm');
+    if (toolForm) {
+      toolForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.handleToolSubmission(e.target);
+      });
+    }
+
     // Cancel buttons
-    document.querySelectorAll('#cancelTicketBtn, #cancelAgentBtn, #cancelProjectBtn').forEach(btn => {
+    document.querySelectorAll('#cancelTicketBtn, #cancelAgentBtn, #cancelProjectBtn, #cancelSkillBtn, #cancelToolBtn').forEach(btn => {
       btn.addEventListener('click', () => {
         this.closeAllModals();
       });
@@ -558,8 +598,8 @@ class CamelotApp {
     }
     
     // Number keys for section switching
-    if (e.key >= '1' && e.key <= '5') {
-      const sections = ['dashboard', 'tickets', 'projects', 'agents', 'terminal'];
+    if (e.key >= '1' && e.key <= '7') {
+      const sections = ['dashboard', 'tickets', 'projects', 'skills', 'tools', 'agents', 'terminal'];
       const sectionIndex = parseInt(e.key) - 1;
       if (sections[sectionIndex]) {
         this.switchSection(sections[sectionIndex]);
@@ -621,6 +661,12 @@ class CamelotApp {
         break;
       case 'projects':
         await this.loadProjects();
+        break;
+      case 'skills':
+        await this.loadSkills();
+        break;
+      case 'tools':
+        await this.loadTools();
         break;
       case 'agents':
         await this.loadAgents();
@@ -782,6 +828,360 @@ class CamelotApp {
       setTimeout(() => {
         projectCard.classList.remove('list-item-enter');
       }, 500);
+    }
+  }
+
+  // Skills Management
+  async loadSkills() {
+    try {
+      const response = await fetch('/api/skills');
+      const data = await response.json();
+      this.skills = data;
+      console.log('⚔️ Loaded skills:', data);
+      this.renderSkills();
+    } catch (error) {
+      console.error('❌ Failed to load skills:', error);
+    }
+  }
+
+  renderSkills() {
+    const skillsGrid = document.getElementById('skillsGrid');
+    const skillsEmpty = document.getElementById('skillsEmpty');
+    
+    if (!skillsGrid || !skillsEmpty) return;
+
+    if (!this.skills || this.skills.length === 0) {
+      skillsGrid.style.display = 'none';
+      skillsEmpty.style.display = 'flex';
+      return;
+    }
+
+    skillsEmpty.style.display = 'none';
+    skillsGrid.style.display = 'grid';
+    
+    skillsGrid.innerHTML = this.skills.map(skill => {
+      const createdDate = new Date(skill.createdAt).toLocaleDateString();
+      return `
+        <div class="skill-card" data-skill-id="${skill.id}">
+          <div class="skill-header">
+            <div class="skill-info">
+              <h3 class="skill-name" title="${skill.name}">${skill.name}</h3>
+              ${skill.description ? `<p class="skill-description">${skill.description}</p>` : ''}
+              <div class="skill-filename">${skill.fileName}</div>
+            </div>
+            <div class="skill-actions">
+              <button class="skill-action edit" onclick="camelot.editSkill('${skill.id}')" title="Edit skill">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 20h9"/>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                </svg>
+              </button>
+              <button class="skill-action delete" onclick="camelot.deleteSkill('${skill.id}')" title="Delete skill">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <polyline points="3,6 5,6 21,6"/>
+                  <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                  <line x1="10" y1="11" x2="10" y2="17"/>
+                  <line x1="14" y1="11" x2="14" y2="17"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="skill-meta">
+            <div class="skill-created">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12,6 12,12 16,14"/>
+              </svg>
+              Created ${createdDate}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  openNewSkillModal() {
+    // Clear form
+    document.getElementById('skillForm').reset();
+    
+    // Set modal state for new skill
+    document.getElementById('skillModalTitle').textContent = 'Create New Skill';
+    document.getElementById('saveSkillBtn').textContent = 'Create Skill';
+    this.editingSkillId = null;
+    
+    this.openModal('skillModal');
+  }
+
+  editSkill(skillId) {
+    const skill = this.skills.find(s => s.id === skillId);
+    if (!skill) return;
+
+    // Pre-fill form
+    document.getElementById('skillName').value = skill.name;
+    document.getElementById('skillFileName').value = skill.fileName;
+    document.getElementById('skillDescription').value = skill.description || '';
+    document.getElementById('skillContent').value = skill.content;
+    
+    // Set modal state for editing
+    document.getElementById('skillModalTitle').textContent = 'Edit Skill';
+    document.getElementById('saveSkillBtn').textContent = 'Update Skill';
+    this.editingSkillId = skillId;
+    
+    this.openModal('skillModal');
+  }
+
+  async deleteSkill(skillId) {
+    const skill = this.skills.find(s => s.id === skillId);
+    if (!skill) return;
+
+    if (!confirm(`Are you sure you want to delete the skill "${skill.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/skills/${skillId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        this.showNotification('Skill deleted successfully!', 'success');
+        await this.loadSkills(); // Refresh skills list
+      } else {
+        throw new Error('Failed to delete skill');
+      }
+    } catch (error) {
+      console.error('❌ Failed to delete skill:', error);
+      this.showNotification('Failed to delete skill', 'error');
+    }
+  }
+
+  async handleSkillSubmission(form) {
+    const formData = new FormData(form);
+    const skillData = {
+      name: formData.get('name') || document.getElementById('skillName').value,
+      description: formData.get('description') || document.getElementById('skillDescription').value || '',
+      fileName: formData.get('fileName') || document.getElementById('skillFileName').value,
+      content: formData.get('content') || document.getElementById('skillContent').value
+    };
+
+    if (!skillData.name || !skillData.fileName || !skillData.content) {
+      this.showNotification('Please fill in skill name, filename, and content', 'error');
+      return;
+    }
+
+    try {
+      // Add loading state
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = this.editingSkillId ? 'Updating...' : 'Creating...';
+      submitBtn.disabled = true;
+
+      const url = this.editingSkillId ? `/api/skills/${this.editingSkillId}` : '/api/skills';
+      const method = this.editingSkillId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(skillData)
+      });
+
+      if (response.ok) {
+        const action = this.editingSkillId ? 'updated' : 'created';
+        this.showNotification(`Skill ${action} successfully!`, 'success');
+        this.closeAllModals();
+        form.reset();
+        await this.loadSkills(); // Refresh skills list
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || `Failed to ${this.editingSkillId ? 'update' : 'create'} skill`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to save skill:', error);
+      this.showNotification(error.message || 'Failed to save skill', 'error');
+    } finally {
+      // Remove loading state
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.textContent = this.editingSkillId ? 'Update Skill' : 'Create Skill';
+      submitBtn.disabled = false;
+    }
+  }
+
+  // Tools Management
+  async loadTools() {
+    try {
+      const response = await fetch('/api/tools');
+      const data = await response.json();
+      this.tools = data;
+      console.log('🔧 Loaded tools:', data);
+      this.renderTools();
+    } catch (error) {
+      console.error('❌ Failed to load tools:', error);
+    }
+  }
+
+  renderTools() {
+    const toolsGrid = document.getElementById('toolsGrid');
+    const toolsEmpty = document.getElementById('toolsEmpty');
+    
+    if (!toolsGrid || !toolsEmpty) return;
+
+    if (!this.tools || this.tools.length === 0) {
+      toolsGrid.style.display = 'none';
+      toolsEmpty.style.display = 'flex';
+      return;
+    }
+
+    toolsEmpty.style.display = 'none';
+    toolsGrid.style.display = 'grid';
+    
+    toolsGrid.innerHTML = this.tools.map(tool => {
+      const createdDate = new Date(tool.createdAt).toLocaleDateString();
+      return `
+        <div class="tool-card" data-tool-id="${tool.id}">
+          <div class="tool-header">
+            <div class="tool-info">
+              <h3 class="tool-name" title="${tool.name}">${tool.name}</h3>
+              ${tool.description ? `<p class="tool-description">${tool.description}</p>` : ''}
+              <div class="tool-filename">${tool.fileName}</div>
+            </div>
+            <div class="tool-actions">
+              <button class="tool-action edit" onclick="camelot.editTool('${tool.id}')" title="Edit tool">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 20h9"/>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                </svg>
+              </button>
+              <button class="tool-action delete" onclick="camelot.deleteTool('${tool.id}')" title="Delete tool">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <polyline points="3,6 5,6 21,6"/>
+                  <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                  <line x1="10" y1="11" x2="10" y2="17"/>
+                  <line x1="14" y1="11" x2="14" y2="17"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="tool-meta">
+            <div class="tool-created">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12,6 12,12 16,14"/>
+              </svg>
+              Created ${createdDate}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  openNewToolModal() {
+    // Clear form
+    document.getElementById('toolForm').reset();
+    
+    // Set modal state for new tool
+    document.getElementById('toolModalTitle').textContent = 'Create New Tool';
+    document.getElementById('saveToolBtn').textContent = 'Create Tool';
+    this.editingToolId = null;
+    
+    this.openModal('toolModal');
+  }
+
+  editTool(toolId) {
+    const tool = this.tools.find(t => t.id === toolId);
+    if (!tool) return;
+
+    // Pre-fill form
+    document.getElementById('toolName').value = tool.name;
+    document.getElementById('toolFileName').value = tool.fileName;
+    document.getElementById('toolDescription').value = tool.description || '';
+    document.getElementById('toolContent').value = tool.content;
+    
+    // Set modal state for editing
+    document.getElementById('toolModalTitle').textContent = 'Edit Tool';
+    document.getElementById('saveToolBtn').textContent = 'Update Tool';
+    this.editingToolId = toolId;
+    
+    this.openModal('toolModal');
+  }
+
+  async deleteTool(toolId) {
+    const tool = this.tools.find(t => t.id === toolId);
+    if (!tool) return;
+
+    if (!confirm(`Are you sure you want to delete the tool "${tool.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/tools/${toolId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        this.showNotification('Tool deleted successfully!', 'success');
+        await this.loadTools(); // Refresh tools list
+      } else {
+        throw new Error('Failed to delete tool');
+      }
+    } catch (error) {
+      console.error('❌ Failed to delete tool:', error);
+      this.showNotification('Failed to delete tool', 'error');
+    }
+  }
+
+  async handleToolSubmission(form) {
+    const formData = new FormData(form);
+    const toolData = {
+      name: formData.get('name') || document.getElementById('toolName').value,
+      description: formData.get('description') || document.getElementById('toolDescription').value || '',
+      fileName: formData.get('fileName') || document.getElementById('toolFileName').value,
+      content: formData.get('content') || document.getElementById('toolContent').value
+    };
+
+    if (!toolData.name || !toolData.fileName || !toolData.content) {
+      this.showNotification('Please fill in tool name, filename, and content', 'error');
+      return;
+    }
+
+    try {
+      // Add loading state
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = this.editingToolId ? 'Updating...' : 'Creating...';
+      submitBtn.disabled = true;
+
+      const url = this.editingToolId ? `/api/tools/${this.editingToolId}` : '/api/tools';
+      const method = this.editingToolId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(toolData)
+      });
+
+      if (response.ok) {
+        const action = this.editingToolId ? 'updated' : 'created';
+        this.showNotification(`Tool ${action} successfully!`, 'success');
+        this.closeAllModals();
+        form.reset();
+        await this.loadTools(); // Refresh tools list
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || `Failed to ${this.editingToolId ? 'update' : 'create'} tool`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to save tool:', error);
+      this.showNotification(error.message || 'Failed to save tool', 'error');
+    } finally {
+      // Remove loading state
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.textContent = this.editingToolId ? 'Update Tool' : 'Create Tool';
+      submitBtn.disabled = false;
     }
   }
 
