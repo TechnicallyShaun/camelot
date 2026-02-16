@@ -399,12 +399,11 @@ class CamelotApp {
     ticketsList.innerHTML = this.tickets.map(ticket => {
       const project = ticket.projectId ? this.projects.find(p => p.id === ticket.projectId) : null;
       return `
-      <div class="ticket-card" data-ticket-id="${ticket.id}" onclick="camelot.showTicketDetail(${ticket.id})">
-        <div class="ticket-header">
-          <h3 class="ticket-title">${ticket.title}</h3>
-          <span class="ticket-stage badge-${ticket.stage}">${this.formatStage(ticket.stage)}</span>
+      <div class="split-list-item" data-ticket-id="${ticket.id}" onclick="camelot.showTicketDetail(${ticket.id})">
+        <div class="split-list-item-info">
+          <div class="split-list-item-name">${ticket.title} <span class="ticket-stage badge-${ticket.stage}">${this.formatStage(ticket.stage)}</span></div>
+          ${project ? `<div class="split-list-item-meta">${project.name}</div>` : ''}
         </div>
-        ${project ? `<div class="ticket-project-tag">${project.name}</div>` : ''}
       </div>
     `;
     }).join('');
@@ -423,7 +422,7 @@ class CamelotApp {
 
     // Replace parameters in skill content
     let prompt = skill.content
-      .replace(/\{\{ticket_number\}\}/g, String(ticket.id))
+      .replace(/\{\{ticket_number\}\}/g, ticket.title)
       .replace(/\{\{ticket_id\}\}/g, String(ticket.id))
       .replace(/\{\{ticket_title\}\}/g, ticket.title)
       .replace(/\{\{project_name\}\}/g, project ? project.name : '')
@@ -466,31 +465,14 @@ class CamelotApp {
       termData.skillPrompt = prompt;
     }
 
-    // After terminal connects, wait for agent to be ready then paste the prompt
-    // We watch for terminal data — once we see output, the agent is likely ready
-    const injectPrompt = () => {
-      const termData = this.terminals.get(sessionId);
-      if (!termData) return;
-      
-      let prompted = false;
-      const checkAndInject = () => {
-        if (prompted) return;
-        prompted = true;
-        setTimeout(() => {
-          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-              type: 'terminal-input',
-              sessionId: sessionId,
-              data: prompt + '\n'
-            }));
-          }
-        }, 5000); // Wait 5s after first output for agent to fully initialize
-      };
-      
-      // Fallback: inject after 8s regardless
-      setTimeout(checkAndInject, 8000);
-    };
-    injectPrompt();
+    // Store pending prompt — handleTerminalData will inject when agent is ready
+    const termDataRef = this.terminals.get(sessionId);
+    if (termDataRef) {
+      termDataRef.pendingPrompt = prompt;
+      termDataRef.pendingPromptFallback = setTimeout(() => {
+        this._injectPendingPrompt(sessionId);
+      }, 10000);
+    }
   }
 
   renderDashboardTickets() {
@@ -596,18 +578,13 @@ class CamelotApp {
     if (!ticketsList) return;
 
     // Highlight selected
-    ticketsList.querySelectorAll('.ticket-card').forEach(el => el.classList.remove('selected'));
+    ticketsList.querySelectorAll('.split-list-item').forEach(el => el.classList.remove('active'));
     const card = ticketsList.querySelector(`[data-ticket-id="${ticketId}"]`);
-    if (card) card.classList.add('selected');
+    if (card) card.classList.add('active');
 
     // Show detail panel
-    let detailPanel = document.getElementById('ticketDetailPanel');
-    if (!detailPanel) {
-      detailPanel = document.createElement('div');
-      detailPanel.id = 'ticketDetailPanel';
-      detailPanel.className = 'ticket-detail-panel';
-      ticketsList.parentNode.appendChild(detailPanel);
-    }
+    const detailPanel = document.getElementById('ticketDetailPanel');
+    if (!detailPanel) return;
 
     const activityHtml = activities.length === 0
       ? '<p class="text-muted">No activity recorded.</p>'
@@ -630,7 +607,6 @@ class CamelotApp {
       <h4 style="margin-top: var(--space-4);">Activity Log</h4>
       <div class="ticket-activity-feed">${activityHtml}</div>
     `;
-    detailPanel.style.display = 'block';
   }
 
   async showStandup() {
@@ -871,13 +847,15 @@ class CamelotApp {
           </div>
         </div>
         <div class="detail-edit-form">
-          <div class="form-group">
-            <label class="form-label">Name</label>
-            <input class="form-input" type="text" id="inlineSkillName" value="${skill.name}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">File Name</label>
-            <input class="form-input" type="text" id="inlineSkillFileName" value="${skill.fileName}">
+          <div class="form-row-inline">
+            <div class="form-group">
+              <label class="form-label">Name</label>
+              <input class="form-input" type="text" id="inlineSkillName" value="${skill.name}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">File Name</label>
+              <input class="form-input" type="text" id="inlineSkillFileName" value="${skill.fileName}">
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Description</label>
@@ -1048,13 +1026,15 @@ class CamelotApp {
           </div>
         </div>
         <div class="detail-edit-form">
-          <div class="form-group">
-            <label class="form-label">Name</label>
-            <input class="form-input" type="text" id="inlineToolName" value="${tool.name}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">File Name</label>
-            <input class="form-input" type="text" id="inlineToolFileName" value="${tool.fileName}">
+          <div class="form-row-inline">
+            <div class="form-group">
+              <label class="form-label">Name</label>
+              <input class="form-input" type="text" id="inlineToolName" value="${tool.name}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">File Name</label>
+              <input class="form-input" type="text" id="inlineToolFileName" value="${tool.fileName}">
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Description</label>
@@ -1661,6 +1641,39 @@ class CamelotApp {
     const terminalData = this.terminals.get(message.sessionId);
     if (terminalData) {
       terminalData.terminal.write(message.data);
+
+      // Smart prompt injection: detect when agent is ready
+      if (terminalData.pendingPrompt) {
+        const output = message.data;
+        const readyPatterns = [
+          /Describe a task/i,
+          /Type @ to mention/i,
+          /What would you like/i,
+          /[^\\]\>\s*$/,
+        ];
+        const isReady = readyPatterns.some(p => p.test(output));
+        if (isReady) {
+          this._injectPendingPrompt(message.sessionId);
+        }
+      }
+    }
+  }
+
+  _injectPendingPrompt(sessionId) {
+    const termData = this.terminals.get(sessionId);
+    if (!termData || !termData.pendingPrompt) return;
+    const prompt = termData.pendingPrompt;
+    delete termData.pendingPrompt;
+    if (termData.pendingPromptFallback) {
+      clearTimeout(termData.pendingPromptFallback);
+      delete termData.pendingPromptFallback;
+    }
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'terminal-input',
+        sessionId: sessionId,
+        data: prompt + '\n'
+      }));
     }
   }
 

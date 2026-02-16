@@ -1,5 +1,14 @@
 /* Component Styles */
 
+/* Form Row Inline — side-by-side fields */
+.form-row-inline {
+  display: flex;
+  gap: var(--space-4);
+}
+.form-row-inline > .form-group {
+  flex: 1;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;

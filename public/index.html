@@ -200,25 +200,28 @@
             <h2 class="section-title">All Tickets</h2>
             <button class="btn btn-secondary" onclick="camelot.showStandup()">📋 Standup</button>
           </div>
-          
-          <div class="new-ticket-container">
-            <div class="new-ticket-form">
-              <input type="text" id="ticketsPageInput" class="new-ticket-input" placeholder="New ticket..." />
-              <button id="ticketsPageAddBtn" class="new-ticket-btn" title="Add ticket">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <line x1="12" y1="5" x2="12" y2="19"/>
-                  <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div class="tickets-container">
-            <div class="tickets-list" id="allTicketsList">
-              <div class="loading-spinner">
-                <div class="spinner"></div>
-                <p>Loading tickets...</p>
+          <div class="split-layout">
+            <div class="split-list" id="ticketsListPanel">
+              <div class="new-ticket-container" style="padding: var(--space-2) var(--space-3);">
+                <div class="new-ticket-form">
+                  <input type="text" id="ticketsPageInput" class="new-ticket-input" placeholder="New ticket..." />
+                  <button id="ticketsPageAddBtn" class="new-ticket-btn" title="Add ticket">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
+              <div id="allTicketsList">
+                <div class="loading-spinner">
+                  <div class="spinner"></div>
+                  <p>Loading tickets...</p>
+                </div>
+              </div>
+            </div>
+            <div class="split-detail" id="ticketDetailPanel">
+              <div class="detail-empty"><p>Select a ticket to view details</p></div>
             </div>
           </div>
         </section>
