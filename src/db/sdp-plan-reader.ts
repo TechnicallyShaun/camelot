@@ -221,11 +221,13 @@ export class FileSystemSdpPlanReader implements SdpPlanReader {
   }
   
   private completeTask(task: Partial<SdpTask>): SdpTask {
-    return {
+    const result: SdpTask = {
       title: task.title!,
-      description: task.description && task.description.trim() ? task.description.trim() : undefined,
       completed: task.completed || false,
       dependencies: task.dependencies || []
-    };
+    } as SdpTask;
+    const desc = task.description && task.description.trim();
+    if (desc) result.description = desc;
+    return result;
   }
 }
