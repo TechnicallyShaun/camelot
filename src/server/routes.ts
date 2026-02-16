@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, SkillPublisher, SdpPlanReader, TicketActivityRepository, TicketStage } from "../db/types.js";
+import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, SkillPublisher, SdpPlanReader, TicketActivityRepository, DailySummaryGenerator, TicketStage } from "../db/types.js";
 import type { Logger } from "../logger.js";
 
 export interface RoutesDeps {
@@ -14,6 +14,7 @@ export interface RoutesDeps {
   readonly sdpPlanReader: SdpPlanReader;
   readonly sdpPlansPath: string | null;
   readonly ticketActivity: TicketActivityRepository;
+  readonly dailySummaryGenerator: DailySummaryGenerator;
   readonly logger: Logger;
 }
 
@@ -183,6 +184,32 @@ export function createApiRouter(deps: RoutesDeps): Router {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       deps.logger.error({ error, ticketId, sessionId, action }, "Failed to create ticket activity");
+      res.status(500).json({ error: message });
+    }
+  });
+
+  // Daily Summary
+  router.get("/daily-summary", async (req: Request, res: Response) => {
+    const { date } = req.query;
+    
+    if (!date || typeof date !== 'string') {
+      res.status(400).json({ error: "date parameter is required (format: YYYY-MM-DD)" });
+      return;
+    }
+
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD" });
+      return;
+    }
+
+    try {
+      const summary = await deps.dailySummaryGenerator.generateSummary(date);
+      res.json(summary);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      deps.logger.error({ error, date }, "Failed to generate daily summary");
       res.status(500).json({ error: message });
     }
   });

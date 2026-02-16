@@ -7,6 +7,7 @@ import { createLogger } from "./logger.js";
 import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository, SqliteTicketActivityRepository } from "./db/sqlite.js";
 import { FileSystemSkillPublisher } from "./db/skill-publisher.js";
 import { FileSystemSdpPlanReader } from "./db/sdp-plan-reader.js";
+import { DatabaseDailySummaryGenerator } from "./db/daily-summary-generator.js";
 import { ProcessAgentSpawner } from "./agents/spawner.js";
 import { createApp } from "./server/app.js";
 import { TerminalManager } from "./terminal/manager.js";
@@ -42,6 +43,9 @@ const skillPublisher = new FileSystemSkillPublisher(skills, logger);
 // Create SDP plan reader
 const sdpPlanReader = new FileSystemSdpPlanReader(tickets, logger);
 
+// Create daily summary generator
+const dailySummaryGenerator = new DatabaseDailySummaryGenerator(ticketActivity, tickets, agentRuns, logger);
+
 // Create agent spawner
 const spawner = new ProcessAgentSpawner(logger);
 
@@ -61,6 +65,7 @@ const app = createApp({
   sdpPlanReader,
   sdpPlansPath: config.sdpPlansPath,
   ticketActivity,
+  dailySummaryGenerator,
   logger 
 });
 

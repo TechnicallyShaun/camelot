@@ -162,6 +162,29 @@ export interface TicketActivityRepository {
   findByDateRange(startDate: string, endDate: string): TicketActivity[];
 }
 
+export interface DailySummary {
+  readonly date: string; // YYYY-MM-DD
+  readonly tickets: {
+    readonly created: number;
+    readonly updated: number;
+    readonly completed: number;
+    readonly deleted: number;
+  };
+  readonly sessions: {
+    readonly total: number;
+    readonly unique: string[];
+  };
+  readonly activities: {
+    readonly total: number;
+    readonly byAction: Record<TicketAction, number>;
+  };
+  readonly effortBullets: string[];
+}
+
+export interface DailySummaryGenerator {
+  generateSummary(date: string): Promise<DailySummary>;
+}
+
 export interface ToolRepository {
   create(tool: Omit<Tool, 'id' | 'createdAt' | 'updatedAt'>): Tool;
   findAll(): Tool[];
