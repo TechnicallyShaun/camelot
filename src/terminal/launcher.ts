@@ -28,8 +28,8 @@ export class WindowsTerminalLauncher implements TerminalLauncher {
   private buildAgentCommand(config: TerminalLaunchConfig): string {
     if (config.agent === "copilot") {
       return config.prompt
-        ? `copilot -i '${config.prompt}' --yolo`
-        : `copilot -i --yolo`;
+        ? `copilot -i '${config.prompt}' --allow-all-tools --allow-all-paths`
+        : `copilot -i --allow-all-tools --allow-all-paths`;
     }
     if (config.agent === "claude") {
       return config.prompt

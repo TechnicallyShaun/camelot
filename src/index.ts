@@ -4,7 +4,7 @@ import { mkdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./logger.js";
-import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository, SqliteTicketActivityRepository } from "./db/sqlite.js";
+import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository, SqliteServiceRepository, SqliteTicketActivityRepository } from "./db/sqlite.js";
 import { FileSystemSkillPublisher } from "./db/skill-publisher.js";
 import { FileSystemSdpPlanReader } from "./db/sdp-plan-reader.js";
 import { DatabaseDailySummaryGenerator } from "./db/daily-summary-generator.js";
@@ -36,6 +36,7 @@ const agentRuns = new SqliteAgentRunRepository(database.db);
 const agentDefinitions = new SqliteAgentDefinitionRepository(database.db);
 const skills = new SqliteSkillRepository(database.db);
 const tools = new SqliteToolRepository(database.db);
+const services = new SqliteServiceRepository(database.db);
 const ticketActivity = new SqliteTicketActivityRepository(database.db);
 
 // Create skill publisher
@@ -63,7 +64,8 @@ const app = createApp({
   agentRuns, 
   agentDefinitions, 
   skills, 
-  tools, 
+  tools,
+  services,
   skillPublisher, 
   skillsPublishPath: config.skillsPublishPath,
   sdpPlanReader,

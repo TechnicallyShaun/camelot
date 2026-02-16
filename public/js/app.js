@@ -19,6 +19,7 @@ class CamelotApp {
     this.editingSkillId = null;
     this.editingToolId = null;
     this.editingAgentId = null;
+    this.services = [];
     
     this.init();
   }
@@ -121,6 +122,11 @@ class CamelotApp {
     const newToolBtn = document.getElementById('newToolBtn');
     if (newToolBtn) {
       newToolBtn.addEventListener('click', () => this.openNewToolModal());
+    }
+
+    const newServiceBtn = document.getElementById('newServiceBtn');
+    if (newServiceBtn) {
+      newServiceBtn.addEventListener('click', () => this.openModal('serviceModal'));
     }
 
     const newAgentBtn = document.getElementById('newAgentBtn');
@@ -226,6 +232,7 @@ class CamelotApp {
       projects: 'Projects',
       skills: '⚔️ Skills',
       tools: '🔧 Tools',
+      services: 'Services',
       agents: 'Agents'
     };
     
@@ -244,7 +251,8 @@ class CamelotApp {
         this.loadSkills(),
         this.loadTools(),
         this.loadTickets(),
-        this.loadActivity()
+        this.loadActivity(),
+        this.loadServices()
       ]);
       
       this.addLogEntry({ message: 'All data loaded successfully', level: 'SUCCESS' });
@@ -268,6 +276,9 @@ class CamelotApp {
         break;
       case 'tools':
         await this.loadTools();
+        break;
+      case 'services':
+        await this.loadServices();
         break;
       case 'agents':
         await this.loadAgents();
@@ -543,46 +554,46 @@ class CamelotApp {
   }
 
   renderProjects() {
-    const projectsGrid = document.getElementById('projectsGrid');
-    const projectsEmpty = document.getElementById('projectsEmpty');
-    
-    if (!projectsGrid || !projectsEmpty) return;
+    const list = document.getElementById('projectsList');
+    if (!list) return;
 
     if (this.projects.length === 0) {
-      projectsGrid.style.display = 'none';
-      projectsEmpty.style.display = 'flex';
+      list.innerHTML = '<div class="detail-empty"><p>No projects yet</p></div>';
       return;
     }
 
-    projectsEmpty.style.display = 'none';
-    projectsGrid.style.display = 'grid';
-    
-    projectsGrid.innerHTML = this.projects.map(project => {
-      const createdDate = new Date(project.createdAt).toLocaleDateString();
-      return `
-        <div class="project-card" data-project-id="${project.id}">
-          <div class="project-header">
-            <div class="project-info">
-              <h3 class="project-name">${project.name}</h3>
-              <div class="project-location">${project.location}</div>
-            </div>
-            <div class="project-actions">
-              <button class="project-action delete" onclick="camelot.deleteProject(${project.id})" title="Delete project">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <polyline points="3,6 5,6 21,6"/>
-                  <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
-                  <line x1="10" y1="11" x2="10" y2="17"/>
-                  <line x1="14" y1="11" x2="14" y2="17"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div class="project-meta">
-            <div class="project-created">Created ${createdDate}</div>
-          </div>
+    list.innerHTML = this.projects.map(project => `
+      <div class="split-list-item" data-id="${project.id}" onclick="camelot.showProjectDetail(${project.id})">
+        <div class="split-list-item-info">
+          <div class="split-list-item-name">${project.name}</div>
+          <div class="split-list-item-meta">${project.location}</div>
         </div>
-      `;
-    }).join('');
+      </div>
+    `).join('');
+  }
+
+  showProjectDetail(projectId) {
+    const project = this.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    document.querySelectorAll('#projectsList .split-list-item').forEach(el => el.classList.remove('active'));
+    const item = document.querySelector(`#projectsList [data-id="${projectId}"]`);
+    if (item) item.classList.add('active');
+
+    const detail = document.getElementById('projectsDetail');
+    const createdDate = new Date(project.createdAt).toLocaleDateString();
+    detail.innerHTML = `
+      <div class="detail-header">
+        <div>
+          <h2 class="detail-title">${project.name}</h2>
+          <div class="detail-meta">${project.location}</div>
+          <div class="detail-meta">Created ${createdDate}</div>
+        </div>
+        <div class="detail-actions">
+          <button class="btn btn-sm btn-secondary" onclick="camelot.deleteProject(${project.id})">Delete</button>
+        </div>
+      </div>
+    `;
   }
 
   async deleteProject(projectId) {
@@ -612,62 +623,106 @@ class CamelotApp {
   }
 
   renderSkills() {
-    const skillsGrid = document.getElementById('skillsGrid');
-    const skillsEmpty = document.getElementById('skillsEmpty');
-    
-    if (!skillsGrid || !skillsEmpty) return;
+    const list = document.getElementById('skillsList');
+    if (!list) return;
 
     if (this.skills.length === 0) {
-      skillsGrid.style.display = 'none';
-      skillsEmpty.style.display = 'flex';
+      list.innerHTML = '<div class="detail-empty"><p>No skills yet</p></div>';
       return;
     }
 
-    skillsEmpty.style.display = 'none';
-    skillsGrid.style.display = 'grid';
-    
-    skillsGrid.innerHTML = this.skills.map(skill => {
-      const createdDate = new Date(skill.createdAt).toLocaleDateString();
-      return `
-        <div class="skill-card" data-skill-id="${skill.id}">
-          <div class="skill-header">
-            <div class="skill-info">
-              <h3 class="skill-name">${skill.name}</h3>
-              ${skill.description ? `<p class="skill-description">${skill.description}</p>` : ''}
-              <div class="skill-filename">${skill.fileName}</div>
-            </div>
-            <div class="skill-actions">
-              <button class="skill-action publish" onclick="camelot.publishSkill('${skill.id}')" title="Publish to filesystem">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14,2 14,8 20,8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10,9 9,9 8,9"/>
-                </svg>
-              </button>
-              <button class="skill-action edit" onclick="camelot.editSkill('${skill.id}')" title="Edit skill">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M12 20h9"/>
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                </svg>
-              </button>
-              <button class="skill-action delete" onclick="camelot.deleteSkill('${skill.id}')" title="Delete skill">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <polyline points="3,6 5,6 21,6"/>
-                  <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
-                  <line x1="10" y1="11" x2="10" y2="17"/>
-                  <line x1="14" y1="11" x2="14" y2="17"/>
-                </svg>
-              </button>
-            </div>
+    list.innerHTML = this.skills.map(skill => `
+      <div class="split-list-item" data-id="${skill.id}" onclick="camelot.showSkillDetail('${skill.id}')">
+        <div class="split-list-item-info">
+          <div class="split-list-item-name">${skill.name}</div>
+          <div class="split-list-item-meta">${skill.fileName}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  showSkillDetail(skillId, editMode = false) {
+    const skill = this.skills.find(s => s.id === skillId);
+    if (!skill) return;
+
+    document.querySelectorAll('#skillsList .split-list-item').forEach(el => el.classList.remove('active'));
+    const item = document.querySelector(`#skillsList [data-id="${skillId}"]`);
+    if (item) item.classList.add('active');
+
+    const detail = document.getElementById('skillsDetail');
+
+    if (editMode) {
+      detail.innerHTML = `
+        <div class="detail-header">
+          <div><h2 class="detail-title">Edit Skill</h2></div>
+          <div class="detail-actions">
+            <button class="btn btn-sm btn-secondary" onclick="camelot.showSkillDetail('${skillId}')">Cancel</button>
+            <button class="btn btn-sm btn-primary" onclick="camelot.saveSkillInline('${skillId}')">Save</button>
           </div>
-          <div class="skill-meta">
-            <div class="skill-created">Created ${createdDate}</div>
+        </div>
+        <div class="detail-edit-form">
+          <div class="form-group">
+            <label class="form-label">Name</label>
+            <input class="form-input" type="text" id="inlineSkillName" value="${skill.name}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">File Name</label>
+            <input class="form-input" type="text" id="inlineSkillFileName" value="${skill.fileName}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <input class="form-input" type="text" id="inlineSkillDescription" value="${skill.description || ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Content</label>
+            <textarea class="form-input form-textarea" id="inlineSkillContent" rows="16">${skill.content}</textarea>
           </div>
         </div>
       `;
-    }).join('');
+      return;
+    }
+
+    const createdDate = new Date(skill.createdAt).toLocaleDateString();
+    detail.innerHTML = `
+      <div class="detail-header">
+        <div>
+          <h2 class="detail-title">${skill.name}</h2>
+          ${skill.description ? `<div class="detail-subtitle">${skill.description}</div>` : ''}
+          <div class="detail-meta">${skill.fileName} · Created ${createdDate}</div>
+        </div>
+        <div class="detail-actions">
+          <button class="btn btn-sm btn-secondary" onclick="camelot.showSkillDetail('${skillId}', true)">Edit</button>
+          <button class="btn btn-sm btn-secondary" onclick="camelot.publishSkill('${skillId}')">Publish</button>
+          <button class="btn btn-sm btn-secondary" onclick="camelot.deleteSkill('${skillId}')">Delete</button>
+        </div>
+      </div>
+      <div class="detail-body">
+        <pre>${skill.content}</pre>
+      </div>
+    `;
+  }
+
+  async saveSkillInline(skillId) {
+    const data = {
+      name: document.getElementById('inlineSkillName').value,
+      fileName: document.getElementById('inlineSkillFileName').value,
+      description: document.getElementById('inlineSkillDescription').value,
+      content: document.getElementById('inlineSkillContent').value,
+    };
+    try {
+      const updated = await this.apiCall(`/api/skills/${skillId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const idx = this.skills.findIndex(s => s.id === skillId);
+      if (idx !== -1) this.skills[idx] = updated;
+      this.renderSkills();
+      this.showSkillDetail(skillId);
+      this.showSuccess('Skill updated!');
+    } catch (error) {
+      this.showError('Failed to update skill');
+    }
   }
 
   openNewSkillModal() {
@@ -739,53 +794,105 @@ class CamelotApp {
   }
 
   renderTools() {
-    const toolsGrid = document.getElementById('toolsGrid');
-    const toolsEmpty = document.getElementById('toolsEmpty');
-    
-    if (!toolsGrid || !toolsEmpty) return;
+    const list = document.getElementById('toolsList');
+    if (!list) return;
 
     if (this.tools.length === 0) {
-      toolsGrid.style.display = 'none';
-      toolsEmpty.style.display = 'flex';
+      list.innerHTML = '<div class="detail-empty"><p>No tools yet</p></div>';
       return;
     }
 
-    toolsEmpty.style.display = 'none';
-    toolsGrid.style.display = 'grid';
-    
-    toolsGrid.innerHTML = this.tools.map(tool => {
-      const createdDate = new Date(tool.createdAt).toLocaleDateString();
-      return `
-        <div class="tool-card" data-tool-id="${tool.id}">
-          <div class="tool-header">
-            <div class="tool-info">
-              <h3 class="tool-name">${tool.name}</h3>
-              ${tool.description ? `<p class="tool-description">${tool.description}</p>` : ''}
-              <div class="tool-filename">${tool.fileName}</div>
-            </div>
-            <div class="tool-actions">
-              <button class="tool-action edit" onclick="camelot.editTool('${tool.id}')" title="Edit tool">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M12 20h9"/>
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                </svg>
-              </button>
-              <button class="tool-action delete" onclick="camelot.deleteTool('${tool.id}')" title="Delete tool">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <polyline points="3,6 5,6 21,6"/>
-                  <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
-                  <line x1="10" y1="11" x2="10" y2="17"/>
-                  <line x1="14" y1="11" x2="14" y2="17"/>
-                </svg>
-              </button>
-            </div>
+    list.innerHTML = this.tools.map(tool => `
+      <div class="split-list-item" data-id="${tool.id}" onclick="camelot.showToolDetail('${tool.id}')">
+        <div class="split-list-item-info">
+          <div class="split-list-item-name">${tool.name}</div>
+          <div class="split-list-item-meta">${tool.fileName}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  showToolDetail(toolId, editMode = false) {
+    const tool = this.tools.find(t => t.id === toolId);
+    if (!tool) return;
+
+    document.querySelectorAll('#toolsList .split-list-item').forEach(el => el.classList.remove('active'));
+    const item = document.querySelector(`#toolsList [data-id="${toolId}"]`);
+    if (item) item.classList.add('active');
+
+    const detail = document.getElementById('toolsDetail');
+
+    if (editMode) {
+      detail.innerHTML = `
+        <div class="detail-header">
+          <div><h2 class="detail-title">Edit Tool</h2></div>
+          <div class="detail-actions">
+            <button class="btn btn-sm btn-secondary" onclick="camelot.showToolDetail('${toolId}')">Cancel</button>
+            <button class="btn btn-sm btn-primary" onclick="camelot.saveToolInline('${toolId}')">Save</button>
           </div>
-          <div class="tool-meta">
-            <div class="tool-created">Created ${createdDate}</div>
+        </div>
+        <div class="detail-edit-form">
+          <div class="form-group">
+            <label class="form-label">Name</label>
+            <input class="form-input" type="text" id="inlineToolName" value="${tool.name}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">File Name</label>
+            <input class="form-input" type="text" id="inlineToolFileName" value="${tool.fileName}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <input class="form-input" type="text" id="inlineToolDescription" value="${tool.description || ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Content</label>
+            <textarea class="form-input form-textarea" id="inlineToolContent" rows="16">${tool.content}</textarea>
           </div>
         </div>
       `;
-    }).join('');
+      return;
+    }
+
+    const createdDate = new Date(tool.createdAt).toLocaleDateString();
+    detail.innerHTML = `
+      <div class="detail-header">
+        <div>
+          <h2 class="detail-title">${tool.name}</h2>
+          ${tool.description ? `<div class="detail-subtitle">${tool.description}</div>` : ''}
+          <div class="detail-meta">${tool.fileName} · Created ${createdDate}</div>
+        </div>
+        <div class="detail-actions">
+          <button class="btn btn-sm btn-secondary" onclick="camelot.showToolDetail('${toolId}', true)">Edit</button>
+          <button class="btn btn-sm btn-secondary" onclick="camelot.deleteTool('${toolId}')">Delete</button>
+        </div>
+      </div>
+      <div class="detail-body">
+        <pre>${tool.content}</pre>
+      </div>
+    `;
+  }
+
+  async saveToolInline(toolId) {
+    const data = {
+      name: document.getElementById('inlineToolName').value,
+      fileName: document.getElementById('inlineToolFileName').value,
+      description: document.getElementById('inlineToolDescription').value,
+      content: document.getElementById('inlineToolContent').value,
+    };
+    try {
+      const updated = await this.apiCall(`/api/tools/${toolId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const idx = this.tools.findIndex(t => t.id === toolId);
+      if (idx !== -1) this.tools[idx] = updated;
+      this.renderTools();
+      this.showToolDetail(toolId);
+      this.showSuccess('Tool updated!');
+    } catch (error) {
+      this.showError('Failed to update tool');
+    }
   }
 
   openNewToolModal() {
@@ -824,6 +931,75 @@ class CamelotApp {
     } catch (error) {
       console.error('❌ Failed to delete tool:', error);
       this.showError('Failed to delete tool');
+    }
+  }
+
+  // SERVICES - Real API integration
+  async loadServices() {
+    try {
+      const services = await this.apiCall('/api/services');
+      this.services = services;
+      this.renderServices();
+    } catch (error) {
+      console.error('❌ Failed to load services:', error);
+    }
+  }
+
+  renderServices() {
+    const list = document.getElementById('servicesList');
+    if (!list) return;
+
+    if (!this.services || this.services.length === 0) {
+      list.innerHTML = '<div class="detail-empty"><p>No services yet</p></div>';
+      return;
+    }
+
+    list.innerHTML = this.services.map(svc => `
+      <div class="split-list-item" data-id="${svc.id}" onclick="camelot.showServiceDetail('${svc.id}')">
+        <div class="split-list-item-info">
+          <div class="split-list-item-name">${svc.name}</div>
+          <div class="split-list-item-meta">${svc.provider || 'No provider'}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  showServiceDetail(serviceId) {
+    const svc = this.services.find(s => s.id === serviceId);
+    if (!svc) return;
+
+    document.querySelectorAll('#servicesList .split-list-item').forEach(el => el.classList.remove('active'));
+    const item = document.querySelector(`#servicesList [data-id="${serviceId}"]`);
+    if (item) item.classList.add('active');
+
+    const detail = document.getElementById('servicesDetail');
+    const createdDate = new Date(svc.createdAt).toLocaleDateString();
+    detail.innerHTML = `
+      <div class="detail-header">
+        <div>
+          <h2 class="detail-title">${svc.name}</h2>
+          ${svc.description ? `<div class="detail-subtitle">${svc.description}</div>` : ''}
+          <div class="detail-meta">${svc.provider} · ${svc.authType} · ${svc.status}</div>
+          ${svc.baseUrl ? `<div class="detail-meta">${svc.baseUrl}</div>` : ''}
+          <div class="detail-meta">Created ${createdDate}</div>
+        </div>
+        <div class="detail-actions">
+          <button class="btn btn-sm btn-secondary" onclick="camelot.deleteService('${serviceId}')">Delete</button>
+        </div>
+      </div>
+    `;
+  }
+
+  async deleteService(serviceId) {
+    if (!confirm('Delete this service?')) return;
+    try {
+      await this.apiCall(`/api/services/${serviceId}`, { method: 'DELETE' });
+      this.services = this.services.filter(s => s.id !== serviceId);
+      this.renderServices();
+      document.getElementById('servicesDetail').innerHTML = '<div class="detail-empty"><p>Select a service to view details</p></div>';
+      this.showSuccess('Service deleted!');
+    } catch (error) {
+      this.showError('Failed to delete service');
     }
   }
 
@@ -1104,11 +1280,29 @@ class CamelotApp {
       cursorBlink: true,
       fontSize: 14,
       fontFamily: 'JetBrains Mono, Consolas, monospace',
+      scrollback: 5000,
+      allowProposedApi: true,
       theme: {
-        background: '#0d1117',
-        foreground: '#e6edf3',
-        cursor: '#f0f6fc',
-        selection: '#264f78'
+        background: '#070a0f',
+        foreground: '#e2e5ed',
+        cursor: '#f59e0b',
+        selection: '#1e2533',
+        black: '#0b0e14',
+        red: '#ef4444',
+        green: '#10b981',
+        yellow: '#f59e0b',
+        blue: '#3b82f6',
+        magenta: '#a855f7',
+        cyan: '#06b6d4',
+        white: '#e2e5ed',
+        brightBlack: '#525b6e',
+        brightRed: '#f87171',
+        brightGreen: '#34d399',
+        brightYellow: '#fbbf24',
+        brightBlue: '#60a5fa',
+        brightMagenta: '#c084fc',
+        brightCyan: '#22d3ee',
+        brightWhite: '#ffffff'
       }
     });
     
@@ -1131,6 +1325,18 @@ class CamelotApp {
           type: 'terminal-input',
           sessionId: sessionId,
           data: data
+        }));
+      }
+    });
+
+    // Handle terminal resize — sync PTY dimensions for TUI apps
+    terminal.onResize(size => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({
+          type: 'terminal-resize',
+          sessionId: sessionId,
+          cols: size.cols,
+          rows: size.rows
         }));
       }
     });
@@ -1283,6 +1489,35 @@ class CamelotApp {
       });
     }
 
+    const serviceForm = document.getElementById('serviceForm');
+    if (serviceForm) {
+      serviceForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+          name: document.getElementById('serviceName').value,
+          provider: document.getElementById('serviceProvider').value,
+          baseUrl: document.getElementById('serviceBaseUrl').value,
+          authType: document.getElementById('serviceAuthType').value,
+          description: document.getElementById('serviceDescription').value,
+        };
+        if (!data.name) { this.showError('Name is required'); return; }
+        try {
+          const svc = await this.apiCall('/api/services', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          this.services.unshift(svc);
+          this.renderServices();
+          this.closeAllModals();
+          serviceForm.reset();
+          this.showSuccess('Service created!');
+        } catch (error) {
+          this.showError('Failed to create service');
+        }
+      });
+    }
+
     const agentForm = document.getElementById('agentForm');
     if (agentForm) {
       agentForm.addEventListener('submit', (e) => {
@@ -1292,7 +1527,7 @@ class CamelotApp {
     }
 
     // Cancel buttons
-    document.querySelectorAll('#cancelProjectBtn, #cancelSkillBtn, #cancelToolBtn, #cancelAgentBtn').forEach(btn => {
+    document.querySelectorAll('#cancelProjectBtn, #cancelSkillBtn, #cancelToolBtn, #cancelServiceBtn, #cancelAgentBtn').forEach(btn => {
       btn.addEventListener('click', () => {
         this.closeAllModals();
       });

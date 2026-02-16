@@ -183,6 +183,26 @@ export interface DailySummaryExporter {
   exportToFile(date: string, outputDir: string): Promise<string>;
 }
 
+export interface Service {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly provider: string;
+  readonly baseUrl: string;
+  readonly authType: 'none' | 'api_key' | 'oauth' | 'bearer';
+  readonly status: 'active' | 'inactive';
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface ServiceRepository {
+  create(service: Omit<Service, 'id' | 'createdAt' | 'updatedAt'>): Service;
+  findAll(): Service[];
+  findById(id: string): Service | undefined;
+  update(id: string, updates: Partial<Omit<Service, 'id' | 'createdAt'>>): boolean;
+  remove(id: string): boolean;
+}
+
 export interface ToolRepository {
   create(tool: Omit<Tool, 'id' | 'createdAt' | 'updatedAt'>): Tool;
   findAll(): Tool[];

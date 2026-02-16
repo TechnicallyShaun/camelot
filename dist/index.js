@@ -33,6 +33,7 @@ const agentRuns = new sqlite_js_1.SqliteAgentRunRepository(database.db);
 const agentDefinitions = new sqlite_js_1.SqliteAgentDefinitionRepository(database.db);
 const skills = new sqlite_js_1.SqliteSkillRepository(database.db);
 const tools = new sqlite_js_1.SqliteToolRepository(database.db);
+const services = new sqlite_js_1.SqliteServiceRepository(database.db);
 const ticketActivity = new sqlite_js_1.SqliteTicketActivityRepository(database.db);
 // Create skill publisher
 const skillPublisher = new skill_publisher_js_1.FileSystemSkillPublisher(skills, logger);
@@ -54,6 +55,7 @@ const app = (0, app_js_1.createApp)({
     agentDefinitions,
     skills,
     tools,
+    services,
     skillPublisher,
     skillsPublishPath: config.skillsPublishPath,
     sdpPlanReader,

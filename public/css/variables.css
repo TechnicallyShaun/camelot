@@ -1,17 +1,17 @@
 /* Design System Variables - Midnight Pragmatist Theme */
 
 :root {
-  /* Background Colors */
-  --bg-primary: #1e293b;     /* slate-800 - main background */
-  --bg-secondary: #0f172a;   /* slate-900 - deeper areas */
-  --bg-tertiary: #334155;    /* slate-700 - elevated surfaces */
-  --bg-overlay: #475569;     /* slate-600 - modal overlays */
+  /* Background Colors — dark cockpit feel */
+  --bg-primary: #0b0e14;     /* near-black - main background */
+  --bg-secondary: #070a0f;   /* deepest black - sidebar/headers */
+  --bg-tertiary: #151a24;    /* dark surface - cards/elevated */
+  --bg-overlay: #1e2533;     /* overlay surfaces */
 
   /* Text Colors */
-  --text-primary: #f8fafc;   /* slate-50 - primary text */
-  --text-secondary: #cbd5e1; /* slate-300 - secondary text */
-  --text-tertiary: #94a3b8;  /* slate-400 - muted text */
-  --text-inverse: #0f172a;   /* slate-900 - text on light backgrounds */
+  --text-primary: #e2e5ed;   /* soft white - primary text */
+  --text-secondary: #8b92a5; /* muted - secondary text */
+  --text-tertiary: #525b6e;  /* dim - muted text */
+  --text-inverse: #070a0f;   /* dark - text on light backgrounds */
 
   /* Accent Colors */
   --accent-amber: #f59e0b;   /* amber-500 - primary accent */
@@ -29,8 +29,8 @@
   --status-info: #3b82f6;     /* blue-500 */
 
   /* Border Colors */
-  --border-primary: #475569;  /* slate-600 - primary borders */
-  --border-secondary: #334155; /* slate-700 - subtle borders */
+  --border-primary: #2a3040;  /* visible borders */
+  --border-secondary: #1a1f2b; /* subtle borders */
   --border-focus: #f59e0b;    /* amber-500 - focus states */
 
   /* Typography */
@@ -88,8 +88,8 @@
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Layout Dimensions */
-  --sidebar-width: 60px;        /* Thin sidebar - icons only */
-  --sidebar-collapsed: 60px;     /* Same as width since it's always thin */
+  --sidebar-width: 48px;        /* Thin sidebar - icons only */
+  --sidebar-collapsed: 48px;     /* Same as width since it's always thin */
   --header-height: 50px;         /* Thinner header as requested */
   --bottom-panel-height: 150px;
   --right-panel-width: 320px;

@@ -100,7 +100,7 @@ describe("TerminalManager", () => {
         process.platform === "win32" ? "powershell.exe" : (process.env.SHELL || "/bin/bash"),
         process.platform === "win32" ? ["-NoLogo", "-NoExit"] : [],
         {
-          name: "xterm-color",
+          name: "xterm-256color",
           cols: 80,
           rows: 30,
           cwd: "/test/path",

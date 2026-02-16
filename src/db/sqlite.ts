@@ -9,6 +9,7 @@ import type {
   AgentDefinition,
   Skill,
   Tool,
+  Service,
   TicketActivity,
   TicketAction,
   ProjectRepository,
@@ -17,6 +18,7 @@ import type {
   AgentDefinitionRepository,
   SkillRepository,
   ToolRepository,
+  ServiceRepository,
   TicketActivityRepository,
 } from "./types.js";
 
@@ -89,6 +91,18 @@ export class SqliteDatabase implements Database {
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
+      CREATE TABLE IF NOT EXISTS services (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        provider TEXT NOT NULL DEFAULT '',
+        base_url TEXT NOT NULL DEFAULT '',
+        auth_type TEXT NOT NULL DEFAULT 'none',
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
       CREATE TABLE IF NOT EXISTS ticket_activity (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ticket_id INTEGER NOT NULL,
@@ -116,7 +130,7 @@ export class SqliteDatabase implements Database {
       "INSERT INTO agent_definitions (id, name, command, default_args, model, is_primary) VALUES (?, ?, ?, ?, ?, ?)"
     );
 
-    insert.run("copilot", "Copilot CLI", "copilot", JSON.stringify(["-i", "--yolo", "--no-ask-user"]), null, 1);
+    insert.run("copilot", "Copilot CLI", "copilot", JSON.stringify(["-i", "--allow-all-tools", "--allow-all-paths", "--no-ask-user"]), null, 1);
     insert.run("claude", "Claude Code", "claude", JSON.stringify(["--dangerously-skip-permissions"]), null, 0);
   }
 
@@ -505,6 +519,72 @@ export class SqliteToolRepository implements ToolRepository {
       description: row.description as string,
       fileName: row.file_name as string,
       content: row.content as string,
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    };
+  }
+}
+
+export class SqliteServiceRepository implements ServiceRepository {
+  constructor(private readonly db: BetterSqlite3.Database) {}
+
+  create(service: Omit<Service, 'id' | 'createdAt' | 'updatedAt'>): Service {
+    const id = randomUUID();
+    const stmt = this.db.prepare(`
+      INSERT INTO services (id, name, description, provider, base_url, auth_type, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
+    `);
+    return this.mapService(
+      stmt.get(id, service.name, service.description, service.provider, service.baseUrl, service.authType, service.status) as Record<string, unknown>
+    );
+  }
+
+  findAll(): Service[] {
+    const rows = this.db.prepare("SELECT * FROM services ORDER BY name ASC").all();
+    return rows.map((r) => this.mapService(r as Record<string, unknown>));
+  }
+
+  findById(id: string): Service | undefined {
+    const row = this.db.prepare("SELECT * FROM services WHERE id = ?").get(id);
+    return row ? this.mapService(row as Record<string, unknown>) : undefined;
+  }
+
+  update(id: string, updates: Partial<Omit<Service, 'id' | 'createdAt'>>): boolean {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+
+    if (updates.name !== undefined) { fields.push("name = ?"); values.push(updates.name); }
+    if (updates.description !== undefined) { fields.push("description = ?"); values.push(updates.description); }
+    if (updates.provider !== undefined) { fields.push("provider = ?"); values.push(updates.provider); }
+    if (updates.baseUrl !== undefined) { fields.push("base_url = ?"); values.push(updates.baseUrl); }
+    if (updates.authType !== undefined) { fields.push("auth_type = ?"); values.push(updates.authType); }
+    if (updates.status !== undefined) { fields.push("status = ?"); values.push(updates.status); }
+
+    if (fields.length === 0) return false;
+
+    fields.push("updated_at = datetime('now')");
+    values.push(id);
+
+    const sql = `UPDATE services SET ${fields.join(", ")} WHERE id = ?`;
+    const result = this.db.prepare(sql).run(...values);
+    return result.changes > 0;
+  }
+
+  remove(id: string): boolean {
+    const result = this.db.prepare("DELETE FROM services WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
+  private mapService(row: Record<string, unknown>): Service {
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      description: row.description as string,
+      provider: row.provider as string,
+      baseUrl: row.base_url as string,
+      authType: row.auth_type as Service['authType'],
+      status: row.status as Service['status'],
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
     };

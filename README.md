@@ -43,16 +43,56 @@ Then open `http://localhost:1187` in your browser.
 
 ## Architecture
 
+```mermaid
+graph TD
+    subgraph UI["Browser UI"]
+        Dashboard
+        Terminal["xterm.js Terminals"]
+        Pages["Skills / Tools / Services / Projects"]
+    end
+
+    subgraph Server["Camelot Server (Node.js + Express)"]
+        API["REST API Routes"]
+        WS["WebSocket Server"]
+        TM["Terminal Manager (node-pty)"]
+        AS["Agent Spawner"]
+    end
+
+    subgraph Data["SQLite Database"]
+        Tickets
+        Projects
+        AgentDefs["Agent Definitions"]
+        Skills
+        Tools
+        Services
+        Activity["Ticket Activity"]
+    end
+
+    subgraph Agents["AI Agents"]
+        Copilot["Copilot CLI"]
+        Claude["Claude Code"]
+    end
+
+    UI -->|HTTP| API
+    UI -->|WebSocket| WS
+    WS --> TM
+    TM --> Agents
+    API --> Data
+    AS --> Agents
+
+    Services -.->|"provides capabilities to"| Tools
+    Tools -.->|"used by"| Skills
+    Skills -.->|"define behaviour for"| AgentDefs
 ```
-Browser (localhost:1187)
-    ↕ WebSocket
-Camelot Server (Node.js)
-    ├── Agent Spawner → copilot -p "..." --yolo
-    ├── Terminal Manager → wt.exe new-tab / node-pty
-    ├── Script Runner → powershell.exe -File ...
-    ├── SQLite → agent runs, logs, tickets
-    └── SDP Bridge → reads .sdp/plans/*
-```
+
+### Layers
+
+| Layer | Description |
+|-------|-------------|
+| **Services** | External capability providers (APIs, databases, cloud services) |
+| **Tools** | Connectors that wrap Services into agent-usable interfaces |
+| **Skills** | Markdown instructions that define how agents use Tools |
+| **Agents** | AI coding agents (Copilot CLI, Claude Code) that execute Skills |
 
 ## License
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository, SqliteTicketActivityRepository } from "./sqlite.js";
+import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository, SqliteServiceRepository, SqliteTicketActivityRepository } from "./sqlite.js";
 import { unlinkSync, existsSync } from "node:fs";
 
 const TEST_DB = ":memory:";
@@ -312,7 +312,7 @@ describe("SqliteAgentDefinitionRepository", () => {
     const copilot = agents.find(a => a.id === "copilot");
     expect(copilot?.name).toBe("Copilot CLI");
     expect(copilot?.command).toBe("copilot");
-    expect(copilot?.defaultArgs).toEqual(["-i", "--yolo", "--no-ask-user"]);
+    expect(copilot?.defaultArgs).toEqual(["-i", "--allow-all-tools", "--allow-all-paths", "--no-ask-user"]);
     expect(copilot?.model).toBeNull();
     expect(copilot?.isPrimary).toBe(true);
     
@@ -785,5 +785,55 @@ describe("SqliteTicketActivityRepository", () => {
     expect(actionMap.get("updated")).toBe("session-updated");
     expect(actionMap.get("deleted")).toBe("session-deleted");
     expect(actionMap.get("stage_changed")).toBe("session-stage_changed");
+  });
+});
+
+describe("SqliteServiceRepository", () => {
+  let database: SqliteDatabase;
+  let repo: SqliteServiceRepository;
+
+  beforeEach(() => {
+    database = new SqliteDatabase(TEST_DB);
+    database.initialize();
+    repo = new SqliteServiceRepository(database.db);
+  });
+
+  afterEach(() => {
+    database.close();
+  });
+
+  it("creates a service", () => {
+    const svc = repo.create({
+      name: "OpenAI",
+      description: "GPT models",
+      provider: "OpenAI",
+      baseUrl: "https://api.openai.com/v1",
+      authType: "api_key",
+      status: "active",
+    });
+    expect(svc.id).toBeDefined();
+    expect(svc.name).toBe("OpenAI");
+    expect(svc.authType).toBe("api_key");
+  });
+
+  it("finds all services", () => {
+    repo.create({ name: "A Service", description: "", provider: "", baseUrl: "", authType: "none", status: "active" });
+    repo.create({ name: "B Service", description: "", provider: "", baseUrl: "", authType: "none", status: "active" });
+    expect(repo.findAll()).toHaveLength(2);
+  });
+
+  it("updates a service", () => {
+    const svc = repo.create({ name: "Old Name", description: "", provider: "", baseUrl: "", authType: "none", status: "active" });
+    const updated = repo.update(svc.id, { name: "New Name", status: "inactive" });
+    expect(updated).toBe(true);
+    const found = repo.findById(svc.id);
+    expect(found?.name).toBe("New Name");
+    expect(found?.status).toBe("inactive");
+  });
+
+  it("removes a service", () => {
+    const svc = repo.create({ name: "To Delete", description: "", provider: "", baseUrl: "", authType: "none", status: "active" });
+    expect(repo.remove(svc.id)).toBe(true);
+    expect(repo.findById(svc.id)).toBeUndefined();
   });
 });

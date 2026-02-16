@@ -108,6 +108,13 @@ describe("API Routes", () => {
       tickets: mockTickets,
       agentRuns: mockAgentRuns,
       agentDefinitions: mockAgentDefinitions,
+      services: {
+        create: vi.fn(),
+        findAll: vi.fn().mockReturnValue([]),
+        findById: vi.fn(),
+        update: vi.fn(),
+        remove: vi.fn(),
+      },
       logger: mockLogger,
     };
 

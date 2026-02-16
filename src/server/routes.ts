@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, SkillPublisher, SdpPlanReader, TicketActivityRepository, DailySummaryGenerator, DailySummaryExporter, TicketStage } from "../db/types.js";
+import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, ServiceRepository, SkillPublisher, SdpPlanReader, TicketActivityRepository, DailySummaryGenerator, DailySummaryExporter, TicketStage } from "../db/types.js";
 import type { Logger } from "../logger.js";
 
 export interface RoutesDeps {
@@ -9,6 +9,7 @@ export interface RoutesDeps {
   readonly agentDefinitions: AgentDefinitionRepository;
   readonly skills: SkillRepository;
   readonly tools: ToolRepository;
+  readonly services: ServiceRepository;
   readonly skillPublisher: SkillPublisher;
   readonly skillsPublishPath: string;
   readonly sdpPlanReader: SdpPlanReader;
@@ -548,6 +549,72 @@ export function createApiRouter(deps: RoutesDeps): Router {
     const removed = deps.tools.remove(req.params.id);
     if (!removed) {
       res.status(404).json({ error: "Tool not found" });
+      return;
+    }
+    res.status(204).end();
+  });
+
+  // Services
+  router.get("/services", (_req: Request, res: Response) => {
+    const services = deps.services.findAll();
+    res.json(services);
+  });
+
+  router.post("/services", (req: Request, res: Response) => {
+    const { name, description, provider, baseUrl, authType, status } = req.body as {
+      name?: string; description?: string; provider?: string; baseUrl?: string;
+      authType?: string; status?: string;
+    };
+    if (!name) {
+      res.status(400).json({ error: "name is required" });
+      return;
+    }
+    try {
+      const service = deps.services.create({
+        name,
+        description: description || '',
+        provider: provider || '',
+        baseUrl: baseUrl || '',
+        authType: (authType as any) || 'none',
+        status: (status as any) || 'active',
+      });
+      res.status(201).json(service);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to create service" });
+    }
+  });
+
+  router.get("/services/:id", (req: Request, res: Response) => {
+    const service = deps.services.findById(req.params.id);
+    if (!service) {
+      res.status(404).json({ error: "Service not found" });
+      return;
+    }
+    res.json(service);
+  });
+
+  router.put("/services/:id", (req: Request, res: Response) => {
+    const { name, description, provider, baseUrl, authType, status } = req.body as Partial<{
+      name: string; description: string; provider: string; baseUrl: string;
+      authType: string; status: string;
+    }>;
+    const success = deps.services.update(req.params.id, {
+      name, description, provider, baseUrl,
+      authType: authType as any,
+      status: status as any,
+    });
+    if (!success) {
+      res.status(404).json({ error: "Service not found" });
+      return;
+    }
+    const updated = deps.services.findById(req.params.id);
+    res.json(updated);
+  });
+
+  router.delete("/services/:id", (req: Request, res: Response) => {
+    const removed = deps.services.remove(req.params.id);
+    if (!removed) {
+      res.status(404).json({ error: "Service not found" });
       return;
     }
     res.status(204).end();
