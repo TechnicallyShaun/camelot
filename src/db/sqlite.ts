@@ -100,6 +100,11 @@ export class SqliteDatabase implements Database {
       );
     `);
 
+    // Migrate old stages to open/closed
+    this.db.exec(`
+      UPDATE tickets SET stage = 'open' WHERE stage NOT IN ('open', 'closed');
+    `);
+
     this.seedDefaultAgents();
   }
 
