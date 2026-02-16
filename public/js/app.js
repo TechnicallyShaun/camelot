@@ -515,8 +515,8 @@ class CamelotApp {
       const ticket = termData.ticketId ? this.tickets.find(t => t.id === termData.ticketId) : null;
       const project = termData.projectId ? this.projects.find(p => p.id === termData.projectId) : null;
       const parts = [];
-      if (ticket) parts.push(`🎫 #${ticket.id} ${ticket.title}`);
       if (project) parts.push(`📁 ${project.name}`);
+      if (ticket) parts.push(`🎫 #${ticket.id} ${ticket.title}`);
       text.textContent = parts.join('  ·  ');
       bar.style.display = 'flex';
     } else {
