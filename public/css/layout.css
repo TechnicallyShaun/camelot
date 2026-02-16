@@ -220,16 +220,35 @@
   flex-direction: column;
   gap: var(--space-6);
   max-width: 1200px;
+  width: 100%;
 }
 
 .stats-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: var(--space-4);
+  transition: gap var(--duration-normal) var(--ease-out);
 }
 
 .activity-card {
   max-width: 800px;
+  transition: max-width var(--duration-normal) var(--ease-out);
+}
+
+/* Improved responsive grid adjustments */
+@media (max-width: 900px) {
+  .stats-row {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-3);
+  }
+  
+  .dashboard-grid {
+    gap: var(--space-4);
+  }
+  
+  .activity-card {
+    max-width: 100%;
+  }
 }
 
 /* Right Panel */
@@ -325,7 +344,23 @@
 }
 
 /* Responsive Design */
-@media (max-width: 1280px) {
+/* Large Desktop - Full 3-panel layout */
+@media (min-width: 1400px) {
+  .dashboard-grid {
+    max-width: 1400px;
+  }
+  
+  .stats-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .activity-card {
+    max-width: 900px;
+  }
+}
+
+/* Standard Desktop - Right panel starts to become overlay at narrower widths */
+@media (max-width: 1320px) {
   #app {
     grid-template-areas: 
       "sidebar main-content main-content"
@@ -340,12 +375,102 @@
     height: 100vh;
     width: var(--right-panel-width);
     transform: translateX(100%);
-    transition: transform var(--duration-normal) var(--ease-out);
+    transition: transform var(--duration-normal) var(--ease-out), 
+                box-shadow var(--duration-normal) var(--ease-out);
     z-index: 200;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0);
   }
   
   .right-panel.open {
     transform: translateX(0);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Improved backdrop with fade transition */
+  .right-panel-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    z-index: 199;
+    transition: opacity var(--duration-normal) var(--ease-out),
+                visibility var(--duration-normal) var(--ease-out);
+    backdrop-filter: blur(2px);
+  }
+  
+  .right-panel-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+/* Medium Desktop - Compact sidebar option */
+@media (max-width: 1200px) {
+  .stats-row {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+  
+  .activity-card {
+    max-width: 700px;
+  }
+  
+  /* Auto-collapse sidebar to icon-only on narrower screens */
+  .sidebar:not(.force-expanded) {
+    width: var(--sidebar-collapsed);
+  }
+  
+  .sidebar:not(.force-expanded) .logo-text,
+  .sidebar:not(.force-expanded) .nav-text {
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all var(--duration-fast) var(--ease-out);
+    pointer-events: none;
+  }
+  
+  .sidebar:not(.force-expanded) .nav-link {
+    justify-content: center;
+    padding: var(--space-3);
+  }
+  
+  .sidebar:not(.force-expanded) .sidebar-footer .btn span {
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all var(--duration-fast) var(--ease-out);
+    pointer-events: none;
+  }
+  
+  .sidebar:not(.force-expanded) .sidebar-footer .btn {
+    justify-content: center;
+    padding: var(--space-2);
+  }
+  
+  /* Hover expansion for collapsed sidebar */
+  .sidebar:not(.force-expanded):hover {
+    width: var(--sidebar-width);
+    box-shadow: var(--shadow-lg);
+    z-index: 150;
+  }
+  
+  .sidebar:not(.force-expanded):hover .logo-text,
+  .sidebar:not(.force-expanded):hover .nav-text,
+  .sidebar:not(.force-expanded):hover .sidebar-footer .btn span {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+    transition-delay: 100ms;
+  }
+  
+  .sidebar:not(.force-expanded):hover .nav-link {
+    justify-content: flex-start;
+  }
+  
+  .sidebar:not(.force-expanded):hover .sidebar-footer .btn {
+    justify-content: flex-start;
+    padding: var(--space-2) var(--space-3);
   }
 }
 

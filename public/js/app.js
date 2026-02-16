@@ -19,7 +19,21 @@ class CamelotApp {
     this.setupTabSystem();
     this.setupModals();
     this.setupPanels();
+    this.setupButtonAnimations();
     this.loadInitialData();
+  }
+  
+  // Enhanced button animations
+  setupButtonAnimations() {
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        // Add press animation
+        e.currentTarget.classList.add('pressed');
+        setTimeout(() => {
+          e.currentTarget.classList.remove('pressed');
+        }, 150);
+      });
+    });
   }
 
   // WebSocket connection
@@ -140,29 +154,78 @@ class CamelotApp {
 
   // Section switching
   switchSection(sectionName) {
-    // Update navigation
+    // Update navigation with animation
     document.querySelectorAll('.nav-item').forEach(item => {
       item.classList.remove('active');
     });
     
-    document.querySelector(`[data-section="${sectionName}"]`).closest('.nav-item').classList.add('active');
+    const navLink = document.querySelector(`[data-section="${sectionName}"]`);
+    if (navLink) {
+      navLink.closest('.nav-item').classList.add('active');
+    }
 
-    // Update sections
-    document.querySelectorAll('.section').forEach(section => {
-      section.classList.remove('active');
-    });
-    
+    // Enhanced section switching with page transitions
+    const currentSection = document.querySelector('.section.active');
     const targetSection = document.getElementById(`${sectionName}-section`);
-    if (targetSection) {
+    
+    if (currentSection && targetSection && currentSection !== targetSection) {
+      // Add leaving animation to current section
+      currentSection.classList.add('leaving');
+      
+      setTimeout(() => {
+        currentSection.classList.remove('active', 'leaving');
+        
+        // Show new section with entering animation
+        targetSection.classList.add('active', 'entering');
+        
+        setTimeout(() => {
+          targetSection.classList.remove('entering');
+        }, 300);
+        
+      }, 150);
+    } else if (targetSection) {
       targetSection.classList.add('active');
     }
 
-    // Update header
-    this.updateHeader(sectionName);
+    // Update header with smooth transition
+    this.updateHeaderAnimated(sectionName);
     this.currentSection = sectionName;
 
     // Load section-specific data
     this.loadSectionData(sectionName);
+  }
+  
+  updateHeaderAnimated(sectionName) {
+    const pageTitle = document.querySelector('.page-title');
+    const breadcrumbActive = document.querySelector('.breadcrumb-item.active');
+    
+    const sectionTitles = {
+      dashboard: 'Dashboard',
+      tickets: 'Tickets',
+      agents: 'Agents',
+      terminal: 'Terminal'
+    };
+    
+    if (pageTitle) {
+      pageTitle.style.transition = 'all 0.2s ease-out';
+      pageTitle.style.opacity = '0.5';
+      pageTitle.style.transform = 'translateY(-5px)';
+      
+      setTimeout(() => {
+        pageTitle.textContent = sectionTitles[sectionName] || 'Camelot';
+        pageTitle.style.opacity = '1';
+        pageTitle.style.transform = 'translateY(0)';
+      }, 100);
+    }
+    
+    if (breadcrumbActive) {
+      breadcrumbActive.style.transition = 'all 0.2s ease-out';
+      breadcrumbActive.style.opacity = '0.5';
+      setTimeout(() => {
+        breadcrumbActive.textContent = sectionTitles[sectionName] || 'Dashboard';
+        breadcrumbActive.style.opacity = '1';
+      }, 100);
+    }
   }
 
   updateHeader(sectionName) {
@@ -180,23 +243,63 @@ class CamelotApp {
     if (breadcrumbActive) breadcrumbActive.textContent = sectionTitles[sectionName] || 'Dashboard';
   }
 
-  // Panel management
+  // Enhanced Panel management with smooth animations
   togglePanel(panelName) {
     const panel = document.querySelector(`.${panelName.replace('Panel', '-panel')}, .sidebar`);
     if (!panel) return;
 
     const isCollapsed = panel.classList.contains('collapsed');
     
+    // Add animation class for smooth transition
+    panel.classList.add('transitioning');
+    
     if (isCollapsed) {
       panel.classList.remove('collapsed');
       this.panels[panelName] = true;
+      
+      // Handle right panel backdrop
+      if (panelName === 'rightPanel' && window.innerWidth <= 1320) {
+        this.showPanelBackdrop();
+      }
     } else {
       panel.classList.add('collapsed');
       this.panels[panelName] = false;
+      
+      // Hide right panel backdrop
+      if (panelName === 'rightPanel') {
+        this.hidePanelBackdrop();
+      }
     }
+
+    // Remove transitioning class after animation
+    setTimeout(() => {
+      panel.classList.remove('transitioning');
+    }, 300);
 
     // Store panel state
     localStorage.setItem('camelot-panels', JSON.stringify(this.panels));
+  }
+  
+  showPanelBackdrop() {
+    let backdrop = document.querySelector('.right-panel-backdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.className = 'right-panel-backdrop';
+      backdrop.addEventListener('click', () => this.togglePanel('rightPanel'));
+      document.body.appendChild(backdrop);
+    }
+    
+    // Force reflow for animation
+    backdrop.offsetHeight;
+    backdrop.classList.add('active');
+  }
+  
+  hidePanelBackdrop() {
+    const backdrop = document.querySelector('.right-panel-backdrop');
+    if (backdrop) {
+      backdrop.classList.remove('active');
+      setTimeout(() => backdrop.remove(), 200);
+    }
   }
 
   // Tab system
@@ -210,22 +313,46 @@ class CamelotApp {
   }
 
   switchTab(tabName, container) {
-    // Update tab buttons
+    // Update tab buttons with animation
     container.querySelectorAll('.tab-button').forEach(btn => {
       btn.classList.remove('active');
     });
     
-    container.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    const activeButton = container.querySelector(`[data-tab="${tabName}"]`);
+    if (activeButton) {
+      activeButton.classList.add('active');
+      
+      // Add button press animation
+      activeButton.classList.add('pressed');
+      setTimeout(() => activeButton.classList.remove('pressed'), 150);
+    }
 
-    // Update tab panels
+    // Enhanced tab panel switching with fade animation
     const panelContainer = container.nextElementSibling;
-    panelContainer.querySelectorAll('.tab-panel').forEach(panel => {
-      panel.classList.remove('active');
-    });
+    const currentPanel = panelContainer.querySelector('.tab-panel.active');
     
-    const targetPanel = panelContainer.querySelector(`#${tabName}-panel`);
-    if (targetPanel) {
-      targetPanel.classList.add('active');
+    if (currentPanel) {
+      currentPanel.style.opacity = '0';
+      currentPanel.style.transform = 'translateY(10px)';
+      
+      setTimeout(() => {
+        currentPanel.classList.remove('active');
+        
+        const targetPanel = panelContainer.querySelector(`#${tabName}-panel`);
+        if (targetPanel) {
+          targetPanel.classList.add('active');
+          
+          // Force reflow for smooth animation
+          targetPanel.offsetHeight;
+          targetPanel.style.opacity = '1';
+          targetPanel.style.transform = 'translateY(0)';
+        }
+      }, 150);
+    } else {
+      const targetPanel = panelContainer.querySelector(`#${tabName}-panel`);
+      if (targetPanel) {
+        targetPanel.classList.add('active');
+      }
     }
   }
 

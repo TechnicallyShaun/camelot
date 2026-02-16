@@ -119,23 +119,60 @@
 
 /* Component-specific animations */
 
-/* Button animations */
+/* Enhanced Button animations */
 .btn {
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
   transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left var(--duration-normal) var(--ease-out);
 }
 
 .btn:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.btn:hover::before {
+  left: 100%;
 }
 
 .btn:active {
-  transform: translateY(0);
+  transform: translateY(-1px) scale(0.98);
   transition-duration: 75ms;
 }
 
+.btn:focus-visible {
+  animation: focusPulse 0.6s var(--ease-out);
+}
+
+@keyframes focusPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+}
+
 .btn-primary:hover {
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+/* Button press animation */
+.btn.pressed {
+  animation: buttonPress 0.15s var(--ease-out);
+}
+
+@keyframes buttonPress {
+  0% { transform: translateY(-2px) scale(1.02); }
+  50% { transform: translateY(0) scale(0.96); }
+  100% { transform: translateY(-1px) scale(1); }
 }
 
 /* Card animations */
@@ -159,79 +196,171 @@
   transform: translateX(4px);
 }
 
-/* Modal animations */
+/* Enhanced Modal animations */
 .modal-overlay {
   opacity: 0;
-  transition: opacity var(--duration-normal) var(--ease-out);
+  transition: all var(--duration-normal) var(--ease-out);
+  backdrop-filter: blur(0px);
 }
 
 .modal-overlay.active {
   opacity: 1;
+  backdrop-filter: blur(4px);
 }
 
 .modal {
-  transform: translate(-50%, -50%) scale(0.95);
+  transform: translate(-50%, -50%) scale(0.85) rotateX(15deg);
   opacity: 0;
-  transition: all var(--duration-normal) var(--ease-out);
+  transition: all cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.5s;
+  filter: blur(2px);
 }
 
 .modal.active {
-  transform: translate(-50%, -50%) scale(1);
+  transform: translate(-50%, -50%) scale(1) rotateX(0deg);
   opacity: 1;
+  filter: blur(0px);
 }
 
-/* Modal entrance animation */
+/* Enhanced modal entrance animation */
 .modal.entering {
-  animation: modalEnter var(--duration-normal) var(--ease-out);
+  animation: modalEnterElastic 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .modal.leaving {
-  animation: modalLeave var(--duration-normal) var(--ease-out);
+  animation: modalLeaveSmooth 0.3s var(--ease-out);
 }
 
-@keyframes modalEnter {
-  from {
+@keyframes modalEnterElastic {
+  0% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.9);
+    transform: translate(-50%, -50%) scale(0.5) rotateX(90deg);
+    filter: blur(10px);
   }
+  50% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.1) rotateX(-5deg);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotateX(0deg);
+    filter: blur(0px);
+  }
+}
+
+@keyframes modalLeaveSmooth {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotateX(0deg);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.85) rotateX(15deg);
+    filter: blur(2px);
+  }
+}
+
+/* Modal content staggered animation */
+.modal-content > * {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: modalContentSlide 0.4s var(--ease-out) forwards;
+}
+
+.modal-content > *:nth-child(1) { animation-delay: 0.1s; }
+.modal-content > *:nth-child(2) { animation-delay: 0.15s; }
+.modal-content > *:nth-child(3) { animation-delay: 0.2s; }
+.modal-content > *:nth-child(4) { animation-delay: 0.25s; }
+
+@keyframes modalContentSlide {
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translateY(0);
   }
 }
 
-@keyframes modalLeave {
-  from {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.9);
-  }
-}
-
-/* List item animations */
+/* Enhanced List item animations */
 .list-item-enter {
-  animation: slideInDown var(--duration-slow) var(--ease-out);
+  animation: slideInBounce var(--duration-slow) var(--ease-out);
 }
 
 .list-item-exit {
-  animation: slideOutUp var(--duration-normal) var(--ease-out);
+  animation: slideOutCollapse var(--duration-normal) var(--ease-out);
 }
 
-@keyframes slideOutUp {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-    max-height: 100px;
-  }
-  to {
+@keyframes slideInBounce {
+  0% {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-20px) scale(0.95);
     max-height: 0;
   }
+  60% {
+    opacity: 1;
+    transform: translateY(5px) scale(1.02);
+    max-height: 120px;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    max-height: 100px;
+  }
 }
+
+@keyframes slideOutCollapse {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    max-height: 100px;
+    margin-bottom: var(--space-3);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateY(-5px) scale(0.98);
+    max-height: 50px;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+    max-height: 0;
+    margin-bottom: 0;
+  }
+}
+
+/* New ticket creation animation sequence */
+.ticket-creating {
+  animation: ticketCreate 1.2s var(--ease-out);
+}
+
+@keyframes ticketCreate {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+    background: var(--accent-amber);
+  }
+  30% {
+    opacity: 0.8;
+    transform: scale(1.05) translateY(-5px);
+    background: var(--accent-amber);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.98) translateY(2px);
+    background: var(--accent-amber-light);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    background: var(--bg-tertiary);
+  }
+}
+
+/* Staggered list animations */
+.ticket-item:nth-child(1) { animation-delay: 0ms; }
+.ticket-item:nth-child(2) { animation-delay: 100ms; }
+.ticket-item:nth-child(3) { animation-delay: 200ms; }
+.ticket-item:nth-child(4) { animation-delay: 300ms; }
+.ticket-item:nth-child(5) { animation-delay: 400ms; }
 
 /* Loading animations */
 .loading {
@@ -255,26 +384,49 @@
   animation: shimmer 1.5s infinite ease-out;
 }
 
-/* Sidebar animations */
+/* Enhanced Sidebar animations */
 .sidebar {
-  transition: width var(--duration-normal) var(--ease-out);
+  transition: width var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-normal) var(--ease-out);
 }
 
 .sidebar.collapsed {
   width: var(--sidebar-collapsed);
 }
 
+.sidebar-toggle {
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.sidebar-toggle:hover {
+  transform: scale(1.1);
+  background: var(--bg-overlay);
+}
+
 .sidebar-toggle svg {
-  transition: transform var(--duration-fast) var(--ease-out);
+  transition: transform var(--duration-normal) var(--ease-out);
 }
 
 .sidebar.collapsed .sidebar-toggle svg {
   transform: rotate(180deg);
 }
 
-/* Panel animations */
+.sidebar-toggle:active {
+  transform: scale(0.95);
+}
+
+/* Enhanced Panel animations */
+.panel-toggle {
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.panel-toggle:hover {
+  transform: scale(1.1);
+  background: var(--bg-overlay);
+}
+
 .panel-toggle svg {
-  transition: transform var(--duration-fast) var(--ease-out);
+  transition: transform var(--duration-normal) var(--ease-out);
 }
 
 .right-panel.collapsed .panel-toggle svg {
@@ -285,10 +437,62 @@
   transform: rotate(180deg);
 }
 
-/* Tab switching animations */
+.panel-toggle:active {
+  transform: scale(0.95);
+}
+
+/* Panel sliding animations with elastic easing */
+.right-panel {
+  transition: transform cubic-bezier(0.68, -0.55, 0.265, 1.55) var(--duration-slow);
+}
+
+.bottom-panel {
+  transition: transform cubic-bezier(0.68, -0.55, 0.265, 1.55) var(--duration-slow);
+}
+
+/* Sidebar expansion with smooth content reveal */
+.nav-text, .logo-text {
+  transition: opacity var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.sidebar.collapsed .nav-text,
+.sidebar.collapsed .logo-text {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+.sidebar:not(.collapsed) .nav-text,
+.sidebar:not(.collapsed) .logo-text {
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: 100ms;
+}
+
+/* Enhanced Tab switching animations */
 .tab-button {
   position: relative;
   overflow: hidden;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.tab-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--accent-amber);
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all var(--duration-fast) var(--ease-out);
+  border-radius: var(--radius-md);
+}
+
+.tab-button:hover::before {
+  opacity: 0.1;
+  transform: scale(1);
 }
 
 .tab-button::after {
@@ -297,18 +501,44 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 3px;
   background: var(--accent-amber);
   transform: translateX(-100%);
-  transition: transform var(--duration-fast) var(--ease-out);
+  transition: transform cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.4s;
+  border-radius: 2px 2px 0 0;
 }
 
 .tab-button.active::after {
   transform: translateX(0);
 }
 
+.tab-button.active {
+  color: var(--accent-amber);
+  font-weight: var(--font-semibold);
+}
+
+/* Enhanced tab panel transitions */
 .tab-panel {
-  animation: fadeIn var(--duration-fast) var(--ease-out);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.tab-panel.active {
+  opacity: 1;
+  transform: translateY(0);
+  animation: slideInFade var(--duration-normal) var(--ease-out);
+}
+
+@keyframes slideInFade {
+  0% {
+    opacity: 0;
+    transform: translateY(15px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Status indicator animations */
