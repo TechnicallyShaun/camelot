@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, SkillPublisher, TicketStage } from "../db/types.js";
+import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, SkillPublisher, SdpPlanReader, TicketStage } from "../db/types.js";
 import type { Logger } from "../logger.js";
 
 export interface RoutesDeps {
@@ -11,6 +11,8 @@ export interface RoutesDeps {
   readonly tools: ToolRepository;
   readonly skillPublisher: SkillPublisher;
   readonly skillsPublishPath: string;
+  readonly sdpPlanReader: SdpPlanReader;
+  readonly sdpPlansPath: string | null;
   readonly logger: Logger;
 }
 
@@ -87,6 +89,48 @@ export function createApiRouter(deps: RoutesDeps): Router {
       return;
     }
     res.status(204).end();
+  });
+
+  // SDP Plans
+  router.get("/sdp-plans", async (_req: Request, res: Response) => {
+    if (!deps.sdpPlansPath) {
+      res.status(400).json({ error: "SDP plans path not configured" });
+      return;
+    }
+
+    try {
+      const plans = await deps.sdpPlanReader.scanDirectory(deps.sdpPlansPath);
+      res.json(plans);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      deps.logger.error({ error, sdpPlansPath: deps.sdpPlansPath }, "Failed to scan SDP plans");
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.post("/sdp-plans/sync", async (req: Request, res: Response) => {
+    if (!deps.sdpPlansPath) {
+      res.status(400).json({ error: "SDP plans path not configured" });
+      return;
+    }
+
+    const { projectId } = req.body as { projectId?: number };
+
+    try {
+      const plans = await deps.sdpPlanReader.scanDirectory(deps.sdpPlansPath);
+      const syncResult = await deps.sdpPlanReader.syncPlansToTickets(plans, projectId);
+      
+      res.json({
+        success: true,
+        plansFound: plans.length,
+        ...syncResult,
+        message: `Synced ${plans.length} plans: ${syncResult.created} created, ${syncResult.updated} updated`
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      deps.logger.error({ error, sdpPlansPath: deps.sdpPlansPath }, "Failed to sync SDP plans");
+      res.status(500).json({ error: message });
+    }
   });
 
   // Agent Runs

@@ -116,6 +116,33 @@ export interface SkillPublisher {
   publishAllToDirectory(outputDir: string): Promise<string[]>;
 }
 
+export interface SdpPlan {
+  readonly name: string;
+  readonly description?: string;
+  readonly tasks: SdpTask[];
+  readonly filePath: string;
+  readonly lastModified: Date;
+}
+
+export interface SdpTask {
+  readonly title: string;
+  readonly description?: string;
+  readonly completed?: boolean;
+  readonly dependencies?: string[];
+}
+
+export interface SdpPlanReader {
+  scanDirectory(sdpPlansPath: string): Promise<SdpPlan[]>;
+  readPlanFile(filePath: string): Promise<SdpPlan | null>;
+  syncPlansToTickets(plans: SdpPlan[], projectId?: number): Promise<SyncResult>;
+}
+
+export interface SyncResult {
+  readonly created: number;
+  readonly updated: number;
+  readonly errors: string[];
+}
+
 export interface ToolRepository {
   create(tool: Omit<Tool, 'id' | 'createdAt' | 'updatedAt'>): Tool;
   findAll(): Tool[];

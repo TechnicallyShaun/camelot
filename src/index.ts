@@ -6,6 +6,7 @@ import { loadConfig } from "./config.js";
 import { createLogger } from "./logger.js";
 import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository } from "./db/sqlite.js";
 import { FileSystemSkillPublisher } from "./db/skill-publisher.js";
+import { FileSystemSdpPlanReader } from "./db/sdp-plan-reader.js";
 import { ProcessAgentSpawner } from "./agents/spawner.js";
 import { createApp } from "./server/app.js";
 import { TerminalManager } from "./terminal/manager.js";
@@ -37,6 +38,9 @@ const tools = new SqliteToolRepository(database.db);
 // Create skill publisher
 const skillPublisher = new FileSystemSkillPublisher(skills, logger);
 
+// Create SDP plan reader
+const sdpPlanReader = new FileSystemSdpPlanReader(tickets, logger);
+
 // Create agent spawner
 const spawner = new ProcessAgentSpawner(logger);
 
@@ -52,7 +56,9 @@ const app = createApp({
   skills, 
   tools, 
   skillPublisher, 
-  skillsPublishPath: config.skillsPublishPath, 
+  skillsPublishPath: config.skillsPublishPath,
+  sdpPlanReader,
+  sdpPlansPath: config.sdpPlansPath,
   logger 
 });
 

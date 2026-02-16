@@ -8,6 +8,7 @@ const config_js_1 = require("./config.js");
 const logger_js_1 = require("./logger.js");
 const sqlite_js_1 = require("./db/sqlite.js");
 const skill_publisher_js_1 = require("./db/skill-publisher.js");
+const sdp_plan_reader_js_1 = require("./db/sdp-plan-reader.js");
 const spawner_js_1 = require("./agents/spawner.js");
 const app_js_1 = require("./server/app.js");
 const manager_js_1 = require("./terminal/manager.js");
@@ -32,6 +33,8 @@ const skills = new sqlite_js_1.SqliteSkillRepository(database.db);
 const tools = new sqlite_js_1.SqliteToolRepository(database.db);
 // Create skill publisher
 const skillPublisher = new skill_publisher_js_1.FileSystemSkillPublisher(skills, logger);
+// Create SDP plan reader
+const sdpPlanReader = new sdp_plan_reader_js_1.FileSystemSdpPlanReader(tickets, logger);
 // Create agent spawner
 const spawner = new spawner_js_1.ProcessAgentSpawner(logger);
 // Create terminal manager
@@ -46,6 +49,8 @@ const app = (0, app_js_1.createApp)({
     tools,
     skillPublisher,
     skillsPublishPath: config.skillsPublishPath,
+    sdpPlanReader,
+    sdpPlansPath: config.sdpPlansPath,
     logger
 });
 // Create HTTP server
