@@ -4,6 +4,8 @@
 
   const API = "/api";
   let ws = null;
+  let terminals = new Map(); // sessionId -> { term, element, tab }
+  let activeTerminalId = null;
 
   // --- WebSocket ---
   function connectWebSocket() {
@@ -33,6 +35,230 @@
       loadTickets();
     } else if (msg.type === "project-created" || msg.type === "project-deleted") {
       // Future: refresh project list
+    } else if (msg.type === "terminal-created") {
+      addLog(`Terminal ${msg.sessionId} created`);
+    } else if (msg.type === "terminal-data") {
+      handleTerminalData(msg.sessionId, msg.data);
+    } else if (msg.type === "terminal-exit") {
+      handleTerminalExit(msg.sessionId, msg.exitCode);
+    } else if (msg.type === "terminal-error") {
+      addLog(`Terminal error: ${msg.error}`);
+    }
+  }
+
+  // --- Terminal Management ---
+  function createTerminal() {
+    const sessionId = `term-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Send create message to server
+    ws.send(JSON.stringify({
+      type: "terminal-create",
+      sessionId: sessionId
+    }));
+
+    // Create terminal instance
+    const term = new Terminal({
+      theme: {
+        background: '#1e293b',
+        foreground: '#f8fafc',
+        cursor: '#f59e0b',
+        selection: '#334155',
+        black: '#0f172a',
+        red: '#ef4444',
+        green: '#10b981',
+        yellow: '#f59e0b',
+        blue: '#3b82f6',
+        magenta: '#a855f7',
+        cyan: '#06b6d4',
+        white: '#f8fafc',
+        brightBlack: '#475569',
+        brightRed: '#f87171',
+        brightGreen: '#34d399',
+        brightYellow: '#fbbf24',
+        brightBlue: '#60a5fa',
+        brightMagenta: '#c084fc',
+        brightCyan: '#22d3ee',
+        brightWhite: '#ffffff'
+      },
+      fontFamily: 'JetBrains Mono, monospace',
+      fontSize: 14,
+      fontWeight: 400,
+      fontWeightBold: 700,
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      cursorBlink: true,
+      cursorStyle: 'block',
+      scrollback: 1000,
+      tabStopWidth: 4,
+      bellStyle: 'none'
+    });
+
+    // Add fit addon
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+
+    // Create terminal container
+    const terminalContainer = createTerminalContainer(sessionId);
+    
+    // Open terminal in container
+    term.open(terminalContainer);
+    fitAddon.fit();
+
+    // Handle terminal input
+    term.onData((data) => {
+      ws.send(JSON.stringify({
+        type: "terminal-input",
+        sessionId: sessionId,
+        data: data
+      }));
+    });
+
+    // Handle terminal resize
+    term.onResize((size) => {
+      ws.send(JSON.stringify({
+        type: "terminal-resize",
+        sessionId: sessionId,
+        cols: size.cols,
+        rows: size.rows
+      }));
+    });
+
+    // Store terminal data
+    const terminalTab = createTerminalTab(sessionId, `Terminal ${terminals.size + 1}`);
+    terminals.set(sessionId, { 
+      term, 
+      element: terminalContainer, 
+      tab: terminalTab,
+      fitAddon
+    });
+
+    // Switch to new terminal
+    switchToTerminal(sessionId);
+    
+    // Resize on window resize
+    const resizeObserver = new ResizeObserver(() => {
+      if (activeTerminalId === sessionId) {
+        setTimeout(() => fitAddon.fit(), 10);
+      }
+    });
+    resizeObserver.observe(terminalContainer);
+
+    addLog(`Created terminal: ${sessionId}`);
+    return sessionId;
+  }
+
+  function createTerminalContainer(sessionId) {
+    const container = document.createElement('div');
+    container.id = `terminal-${sessionId}`;
+    container.className = 'terminal-instance';
+    container.style.display = 'none';
+    container.style.width = '100%';
+    container.style.height = '100%';
+    
+    const terminalArea = document.getElementById('terminal-container');
+    terminalArea.appendChild(container);
+    
+    return container;
+  }
+
+  function createTerminalTab(sessionId, title) {
+    const tab = document.createElement('button');
+    tab.className = 'tab';
+    tab.textContent = title;
+    tab.onclick = () => switchToTerminal(sessionId);
+    
+    // Add close button
+    const closeBtn = document.createElement('span');
+    closeBtn.className = 'tab-close';
+    closeBtn.innerHTML = '×';
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      closeTerminal(sessionId);
+    };
+    tab.appendChild(closeBtn);
+    
+    // Insert before the + button
+    const tabsContainer = document.getElementById('terminal-tabs');
+    const addButton = tabsContainer.querySelector('.tab-add');
+    tabsContainer.insertBefore(tab, addButton);
+    
+    return tab;
+  }
+
+  function switchToTerminal(sessionId) {
+    // Hide all terminals
+    terminals.forEach((terminal, id) => {
+      terminal.element.style.display = 'none';
+      terminal.tab.classList.remove('active');
+    });
+    
+    // Show selected terminal
+    const terminal = terminals.get(sessionId);
+    if (terminal) {
+      terminal.element.style.display = 'block';
+      terminal.tab.classList.add('active');
+      activeTerminalId = sessionId;
+      
+      // Focus and fit
+      terminal.term.focus();
+      setTimeout(() => terminal.fitAddon.fit(), 10);
+      
+      // Hide placeholder if exists
+      const placeholder = document.querySelector('.terminal-placeholder');
+      if (placeholder) {
+        placeholder.style.display = 'none';
+      }
+    }
+  }
+
+  function closeTerminal(sessionId) {
+    const terminal = terminals.get(sessionId);
+    if (!terminal) return;
+    
+    // Send kill message to server
+    ws.send(JSON.stringify({
+      type: "terminal-kill",
+      sessionId: sessionId
+    }));
+    
+    // Remove from DOM
+    terminal.tab.remove();
+    terminal.element.remove();
+    terminals.delete(sessionId);
+    
+    // Switch to another terminal or show placeholder
+    if (activeTerminalId === sessionId) {
+      activeTerminalId = null;
+      const remainingTerminals = Array.from(terminals.keys());
+      if (remainingTerminals.length > 0) {
+        switchToTerminal(remainingTerminals[0]);
+      } else {
+        showTerminalPlaceholder();
+      }
+    }
+    
+    addLog(`Closed terminal: ${sessionId}`);
+  }
+
+  function handleTerminalData(sessionId, data) {
+    const terminal = terminals.get(sessionId);
+    if (terminal) {
+      terminal.term.write(data);
+    }
+  }
+
+  function handleTerminalExit(sessionId, exitCode) {
+    const terminal = terminals.get(sessionId);
+    if (terminal) {
+      terminal.term.write(`\r\n\x1b[31mProcess exited with code ${exitCode}\x1b[0m\r\n`);
+      addLog(`Terminal ${sessionId} process exited with code ${exitCode}`);
+    }
+  }
+
+  function showTerminalPlaceholder() {
+    const placeholder = document.querySelector('.terminal-placeholder');
+    if (placeholder) {
+      placeholder.style.display = 'block';
     }
   }
 
@@ -174,7 +400,11 @@
 
     // Terminal + button
     document.querySelector(".tab-add").addEventListener("click", () => {
-      addLog("🤖 Agent spawn not yet implemented — coming in #40");
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        createTerminal();
+      } else {
+        addLog("WebSocket not connected - cannot create terminal");
+      }
     });
 
     addLog("🏰 Camelot initialized");

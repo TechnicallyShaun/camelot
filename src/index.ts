@@ -7,6 +7,7 @@ import { createLogger } from "./logger.js";
 import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository } from "./db/sqlite.js";
 import { ProcessAgentSpawner } from "./agents/spawner.js";
 import { createApp } from "./server/app.js";
+import { TerminalManager } from "./terminal/manager.js";
 import type { AgentEvent } from "./agents/types.js";
 
 const config = loadConfig();
@@ -32,6 +33,9 @@ const agentRuns = new SqliteAgentRunRepository(database.db);
 // Create agent spawner
 const spawner = new ProcessAgentSpawner(logger);
 
+// Create terminal manager
+const terminalManager = new TerminalManager(logger);
+
 // Create Express app
 const app = createApp({ projects, tickets, agentRuns, logger });
 
@@ -46,11 +50,59 @@ wss.on("connection", (ws) => {
   clients.add(ws);
   logger.info("WebSocket client connected");
 
+  ws.on("message", (data) => {
+    try {
+      const message = JSON.parse(data.toString());
+      handleWebSocketMessage(ws, message);
+    } catch (error) {
+      logger.error({ error }, "Failed to parse WebSocket message");
+    }
+  });
+
   ws.on("close", () => {
     clients.delete(ws);
+    terminalManager.killSessionsForWebSocket(ws);
     logger.info("WebSocket client disconnected");
   });
 });
+
+function handleWebSocketMessage(ws: WebSocket, message: any): void {
+  switch (message.type) {
+    case "terminal-create":
+      try {
+        const sessionId = terminalManager.createSession(ws, message.sessionId);
+        logger.info({ sessionId }, "Terminal session created via WebSocket");
+      } catch (error) {
+        logger.error({ error }, "Failed to create terminal session");
+        ws.send(JSON.stringify({
+          type: "terminal-error",
+          error: "Failed to create terminal session"
+        }));
+      }
+      break;
+
+    case "terminal-input":
+      if (message.sessionId && typeof message.data === "string") {
+        terminalManager.writeToSession(message.sessionId, message.data);
+      }
+      break;
+
+    case "terminal-resize":
+      if (message.sessionId && message.cols && message.rows) {
+        terminalManager.resizeSession(message.sessionId, message.cols, message.rows);
+      }
+      break;
+
+    case "terminal-kill":
+      if (message.sessionId) {
+        terminalManager.killSession(message.sessionId);
+      }
+      break;
+
+    default:
+      logger.debug({ type: message.type }, "Unknown WebSocket message type");
+  }
+}
 
 function broadcast(type: string, data: unknown): void {
   const message = JSON.stringify({ type, data });
@@ -66,6 +118,11 @@ spawner.onEvent((event: AgentEvent) => {
   broadcast("agent-event", event);
 });
 
+// Cleanup inactive terminal sessions every hour
+const cleanupInterval = setInterval(() => {
+  terminalManager.cleanup();
+}, 60 * 60 * 1000);
+
 // Start server
 server.listen(config.port, config.host, () => {
   logger.info({ port: config.port, host: config.host }, "🏰 Camelot is running");
@@ -73,18 +130,20 @@ server.listen(config.port, config.host, () => {
 });
 
 // Graceful shutdown
-process.on("SIGINT", () => {
+function gracefulShutdown() {
   logger.info("Shutting down...");
+  clearInterval(cleanupInterval);
+  
+  // Kill all terminal sessions
+  for (const session of terminalManager.getSessions()) {
+    terminalManager.killSession(session.id);
+  }
+  
   wss.close();
   server.close();
   database.close();
   process.exit(0);
-});
+}
 
-process.on("SIGTERM", () => {
-  logger.info("Shutting down...");
-  wss.close();
-  server.close();
-  database.close();
-  process.exit(0);
-});
+process.on("SIGINT", gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);

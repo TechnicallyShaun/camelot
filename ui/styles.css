@@ -390,3 +390,125 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border);
 }
+
+/* Terminal Enhancements */
+.tab-close {
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--text-muted);
+}
+
+.tab:hover .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  color: var(--accent-red);
+}
+
+.terminal-instance {
+  background: var(--bg-primary);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* XTerm.js theme adjustments */
+.xterm {
+  font-family: var(--font-mono) !important;
+  font-size: 14px !important;
+}
+
+.xterm .xterm-viewport {
+  background-color: transparent !important;
+}
+
+.xterm .xterm-screen {
+  background-color: transparent !important;
+}
+
+.xterm-selection {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Terminal tabs refinements */
+#terminal-tabs {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.tab.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--accent-amber);
+}
+
+.tab-add {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  font-weight: normal;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-add:hover {
+  background: var(--bg-hover);
+  color: var(--accent-amber);
+}
+
+/* Terminal container refinements */
+#terminal-container {
+  flex: 1;
+  position: relative;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.terminal-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.terminal-placeholder p:first-child {
+  font-size: 24px;
+  margin-bottom: 8px;
+  color: var(--accent-amber);
+}
+
+.terminal-placeholder .subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+}

@@ -13,6 +13,10 @@ export function createApp(deps: RoutesDeps): express.Express {
   // Serve static UI files
   const uiDir = resolve(__dirname, "../../ui");
   app.use(express.static(uiDir));
+  
+  // Serve node_modules for frontend dependencies
+  const nodeModulesDir = resolve(__dirname, "../../node_modules");
+  app.use("/node_modules", express.static(nodeModulesDir));
 
   // SPA fallback
   app.get("*", (_req, res) => {
