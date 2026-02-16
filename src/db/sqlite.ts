@@ -163,7 +163,7 @@ export class SqliteTicketRepository implements TicketRepository {
 
   create(title: string, projectId?: number): Ticket {
     const stmt = this.db.prepare(
-      "INSERT INTO tickets (title, project_id) VALUES (?, ?) RETURNING *"
+      "INSERT INTO tickets (title, stage, project_id) VALUES (?, 'open', ?) RETURNING *"
     );
     return this.mapTicket(stmt.get(title, projectId ?? null) as Record<string, unknown>);
   }
