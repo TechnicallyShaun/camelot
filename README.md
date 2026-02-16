@@ -30,7 +30,17 @@ A beautiful, interactive web dashboard that orchestrates AI coding agents on you
 - [GitHub Copilot CLI](https://github.com/features/copilot/cli)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (optional, secondary)
 
-## Quick Start
+## Installation
+
+### Quick Install (Windows PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/TechnicallyShaun/camelot/main/install.ps1 | iex
+```
+
+This downloads and installs Camelot to `~\.camelot`, installs dependencies, and starts the server.
+
+### Manual Install
 
 ```bash
 git clone https://github.com/TechnicallyShaun/camelot.git
