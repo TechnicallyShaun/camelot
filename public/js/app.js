@@ -399,7 +399,7 @@ class CamelotApp {
     ticketsList.innerHTML = this.tickets.map(ticket => {
       const project = ticket.projectId ? this.projects.find(p => p.id === ticket.projectId) : null;
       return `
-      <div class="ticket-card" data-ticket-id="${ticket.id}">
+      <div class="ticket-card" data-ticket-id="${ticket.id}" onclick="camelot.showTicketDetail(${ticket.id})">
         <div class="ticket-header">
           <h3 class="ticket-title">${ticket.title}</h3>
           <span class="ticket-stage badge-${ticket.stage}">${this.formatStage(ticket.stage)}</span>
@@ -458,6 +458,70 @@ class CamelotApp {
 
   formatStage(stage) {
     return stage === 'open' ? 'Open' : stage === 'closed' ? 'Closed' : stage;
+  }
+
+  async showTicketDetail(ticketId) {
+    const ticket = this.tickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+
+    const project = ticket.projectId ? this.projects.find(p => p.id === ticket.projectId) : null;
+
+    // Load activity for this ticket
+    let activities = [];
+    try {
+      activities = await this.apiCall(`/api/ticket-activity?ticketId=${ticketId}`);
+    } catch (e) { /* ignore */ }
+
+    const ticketsList = document.getElementById('allTicketsList');
+    if (!ticketsList) return;
+
+    // Highlight selected
+    ticketsList.querySelectorAll('.ticket-card').forEach(el => el.classList.remove('selected'));
+    const card = ticketsList.querySelector(`[data-ticket-id="${ticketId}"]`);
+    if (card) card.classList.add('selected');
+
+    // Show detail panel
+    let detailPanel = document.getElementById('ticketDetailPanel');
+    if (!detailPanel) {
+      detailPanel = document.createElement('div');
+      detailPanel.id = 'ticketDetailPanel';
+      detailPanel.className = 'ticket-detail-panel';
+      ticketsList.parentNode.appendChild(detailPanel);
+    }
+
+    const activityHtml = activities.length === 0
+      ? '<p class="text-muted">No activity recorded.</p>'
+      : activities.map(a => {
+          const dt = new Date(a.timestamp);
+          const time = dt.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+          return `<div class="activity-item-sm"><span class="activity-action-badge">${a.action}</span> <span class="text-muted">${time}</span> ${a.metadata ? `<span class="text-muted">— ${a.metadata}</span>` : ''}</div>`;
+        }).join('');
+
+    detailPanel.innerHTML = `
+      <div class="detail-header">
+        <div>
+          <h2 class="detail-title">#${ticket.id} ${ticket.title}</h2>
+          <div class="detail-meta">${this.formatStage(ticket.stage)} ${project ? `· ${project.name}` : ''}</div>
+        </div>
+        <div class="detail-actions">
+          <button class="btn btn-sm btn-secondary" onclick="camelot.deleteTicket(${ticket.id})">Delete</button>
+        </div>
+      </div>
+      <h4 style="margin-top: var(--space-4);">Activity Log</h4>
+      <div class="ticket-activity-feed">${activityHtml}</div>
+    `;
+    detailPanel.style.display = 'block';
+  }
+
+  async showStandup() {
+    const date = new Date().toISOString().slice(0, 10);
+    try {
+      const summary = await this.apiCall(`/api/daily-summary?date=${date}`);
+      const msg = `📋 Standup for ${date}\nCreated: ${summary.tickets.created} | Updated: ${summary.tickets.updated} | Completed: ${summary.tickets.completed}\nActivities: ${summary.activities.total}${summary.effortBullets.length ? '\n' + summary.effortBullets.map(b => '• ' + b).join('\n') : ''}`;
+      alert(msg);
+    } catch (e) {
+      this.showError('Failed to generate standup');
+    }
   }
 
   // ACTIVITY - Real API integration

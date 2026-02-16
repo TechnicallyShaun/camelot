@@ -332,6 +332,47 @@ select.form-input {
   color: var(--text-tertiary);
 }
 
+.ticket-card.selected {
+  border-color: var(--accent-amber);
+}
+
+.ticket-detail-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.ticket-activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.activity-item-sm {
+  font-size: var(--text-sm);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.activity-action-badge {
+  display: inline-block;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent-blue, #3b82f6);
+}
+
+.text-muted {
+  color: var(--text-tertiary);
+}
+
 .ticket-project-tag {
   display: inline-block;
   font-size: var(--text-xs);
