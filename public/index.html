@@ -59,6 +59,15 @@
             </a>
           </li>
           <li class="nav-item">
+            <a href="#" class="nav-link" data-section="projects">
+              <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z"/>
+                <path d="M8 21v-4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4"/>
+              </svg>
+              <span class="nav-text">Projects</span>
+            </a>
+          </li>
+          <li class="nav-item">
             <a href="#" class="nav-link" data-section="agents">
               <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
@@ -214,6 +223,43 @@
         <section id="tickets-section" class="section">
           <h2>Tickets Section</h2>
           <p>Ticket management coming soon...</p>
+        </section>
+
+        <section id="projects-section" class="section">
+          <div class="section-header">
+            <h2 class="section-title">Projects</h2>
+            <button class="btn btn-primary" id="newProjectBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              <span>New Project</span>
+            </button>
+          </div>
+          
+          <div class="projects-container">
+            <div class="projects-grid" id="projectsGrid">
+              <!-- Projects will be loaded here -->
+            </div>
+            
+            <div class="projects-empty" id="projectsEmpty" style="display: none;">
+              <div class="empty-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z"/>
+                  <path d="M8 21v-4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4"/>
+                </svg>
+              </div>
+              <h3>No Projects Yet</h3>
+              <p>Create your first project to get started organizing your work.</p>
+              <button class="btn btn-primary" onclick="document.getElementById('newProjectBtn').click()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Create Project
+              </button>
+            </div>
+          </div>
         </section>
 
         <section id="agents-section" class="section">
@@ -521,6 +567,39 @@
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" id="cancelAgentBtn">Cancel</button>
           <button type="submit" class="btn btn-primary" id="saveAgentBtn">Save Agent</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- New Project Modal -->
+  <div class="modal" id="newProjectModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Create New Project</h2>
+        <button class="modal-close" id="projectModalClose" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      
+      <form class="modal-form" id="projectForm">
+        <div class="form-group">
+          <label class="form-label" for="projectName">Project Name</label>
+          <input class="form-input" type="text" id="projectName" placeholder="Enter project name..." required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="projectLocation">Project Location</label>
+          <input class="form-input" type="text" id="projectLocation" placeholder="e.g., /home/user/projects/my-project" required>
+          <small class="form-help">Full path to the project directory</small>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelProjectBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">+ Project</button>
         </div>
       </form>
     </div>

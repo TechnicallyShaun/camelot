@@ -13,6 +13,7 @@ class CamelotApp {
     this.activeTerminal = null;
     this.agents = [];
     this.selectedAgent = null; // Currently selected agent for new terminals
+    this.projects = []; // Projects list
     
     this.init();
   }
@@ -181,6 +182,14 @@ class CamelotApp {
       });
     }
 
+    // New project button
+    const newProjectBtn = document.getElementById('newProjectBtn');
+    if (newProjectBtn) {
+      newProjectBtn.addEventListener('click', () => {
+        this.openModal('newProjectModal');
+      });
+    }
+
     // Terminal launcher button (if it exists)
     const terminalLauncherBtn = document.getElementById('terminalLauncherBtn');
     if (terminalLauncherBtn) {
@@ -255,6 +264,7 @@ class CamelotApp {
     const sectionTitles = {
       dashboard: 'Dashboard',
       tickets: 'Tickets',
+      projects: 'Projects',
       agents: 'Agents',
       terminal: 'Terminal'
     };
@@ -288,6 +298,7 @@ class CamelotApp {
     const sectionTitles = {
       dashboard: 'Dashboard',
       tickets: 'Tickets',
+      projects: 'Projects',
       agents: 'Agents',
       terminal: 'Terminal'
     };
@@ -437,8 +448,16 @@ class CamelotApp {
       });
     }
 
+    const projectForm = document.getElementById('projectForm');
+    if (projectForm) {
+      projectForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.handleProjectSubmission(e.target);
+      });
+    }
+
     // Cancel buttons
-    document.querySelectorAll('#cancelTicketBtn, #cancelAgentBtn').forEach(btn => {
+    document.querySelectorAll('#cancelTicketBtn, #cancelAgentBtn, #cancelProjectBtn').forEach(btn => {
       btn.addEventListener('click', () => {
         this.closeAllModals();
       });
@@ -539,8 +558,8 @@ class CamelotApp {
     }
     
     // Number keys for section switching
-    if (e.key >= '1' && e.key <= '4') {
-      const sections = ['dashboard', 'tickets', 'agents', 'terminal'];
+    if (e.key >= '1' && e.key <= '5') {
+      const sections = ['dashboard', 'tickets', 'projects', 'agents', 'terminal'];
       const sectionIndex = parseInt(e.key) - 1;
       if (sections[sectionIndex]) {
         this.switchSection(sections[sectionIndex]);
@@ -600,6 +619,9 @@ class CamelotApp {
       case 'tickets':
         await this.loadTickets();
         break;
+      case 'projects':
+        await this.loadProjects();
+        break;
       case 'agents':
         await this.loadAgents();
         break;
@@ -615,6 +637,151 @@ class CamelotApp {
       console.log('🎫 Loaded tickets:', data);
     } catch (error) {
       console.error('❌ Failed to load tickets:', error);
+    }
+  }
+
+  async loadProjects() {
+    try {
+      const response = await fetch('/api/projects');
+      const data = await response.json();
+      this.projects = data;
+      console.log('📁 Loaded projects:', data);
+      this.renderProjects();
+    } catch (error) {
+      console.error('❌ Failed to load projects:', error);
+    }
+  }
+
+  renderProjects() {
+    const projectsGrid = document.getElementById('projectsGrid');
+    const projectsEmpty = document.getElementById('projectsEmpty');
+    
+    if (!projectsGrid || !projectsEmpty) return;
+
+    if (!this.projects || this.projects.length === 0) {
+      projectsGrid.style.display = 'none';
+      projectsEmpty.style.display = 'flex';
+      return;
+    }
+
+    projectsEmpty.style.display = 'none';
+    projectsGrid.style.display = 'grid';
+    
+    projectsGrid.innerHTML = this.projects.map(project => {
+      const createdDate = new Date(project.createdAt).toLocaleDateString();
+      return `
+        <div class="project-card" data-project-id="${project.id}">
+          <div class="project-header">
+            <div class="project-info">
+              <h3 class="project-name" title="${project.name}">${project.name}</h3>
+              <div class="project-location" title="${project.location}">${project.location}</div>
+            </div>
+            <div class="project-actions">
+              <button class="project-action delete" onclick="camelot.deleteProject(${project.id})" title="Delete project">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <polyline points="3,6 5,6 21,6"/>
+                  <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                  <line x1="10" y1="11" x2="10" y2="17"/>
+                  <line x1="14" y1="11" x2="14" y2="17"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="project-meta">
+            <div class="project-created">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12,6 12,12 16,14"/>
+              </svg>
+              Created ${createdDate}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async deleteProject(projectId) {
+    if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        this.showNotification('Project deleted successfully!', 'success');
+        await this.loadProjects(); // Refresh project list
+      } else {
+        throw new Error('Failed to delete project');
+      }
+    } catch (error) {
+      console.error('❌ Failed to delete project:', error);
+      this.showNotification('Failed to delete project', 'error');
+    }
+  }
+
+  async handleProjectSubmission(form) {
+    const formData = new FormData(form);
+    const projectData = {
+      name: formData.get('name') || document.getElementById('projectName').value,
+      location: formData.get('location') || document.getElementById('projectLocation').value
+    };
+
+    if (!projectData.name || !projectData.location) {
+      this.showNotification('Please fill in both project name and location', 'error');
+      return;
+    }
+
+    try {
+      // Add loading state
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Creating...';
+      submitBtn.disabled = true;
+
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(projectData)
+      });
+
+      if (response.ok) {
+        const newProject = await response.json();
+        this.showNotification('Project created successfully!', 'success');
+        this.closeAllModals();
+        form.reset();
+        await this.loadProjects(); // Refresh project list
+        
+        // Add to project list with animation
+        this.addProjectToList(newProject);
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create project');
+      }
+    } catch (error) {
+      console.error('❌ Failed to create project:', error);
+      this.showNotification(error.message || 'Failed to create project', 'error');
+    } finally {
+      // Remove loading state
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.textContent = '+ Project';
+      submitBtn.disabled = false;
+    }
+  }
+
+  addProjectToList(projectData) {
+    // Add visual feedback for new project creation
+    const projectCard = document.querySelector(`[data-project-id="${projectData.id}"]`);
+    if (projectCard) {
+      projectCard.classList.add('list-item-enter');
+      setTimeout(() => {
+        projectCard.classList.remove('list-item-enter');
+      }, 500);
     }
   }
 
