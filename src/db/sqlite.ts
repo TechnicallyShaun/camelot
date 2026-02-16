@@ -1,0 +1,202 @@
+import BetterSqlite3 from "better-sqlite3";
+import { randomUUID } from "node:crypto";
+import type {
+  Database,
+  Project,
+  Ticket,
+  TicketStage,
+  AgentRun,
+  ProjectRepository,
+  TicketRepository,
+  AgentRunRepository,
+} from "./types.js";
+
+export class SqliteDatabase implements Database {
+  readonly db: BetterSqlite3.Database;
+
+  constructor(dbPath: string) {
+    this.db = new BetterSqlite3(dbPath);
+    this.db.pragma("journal_mode = WAL");
+    this.db.pragma("foreign_keys = ON");
+  }
+
+  initialize(): void {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        location TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        stage TEXT NOT NULL DEFAULT 'inbox',
+        project_id INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS agent_runs (
+        id TEXT PRIMARY KEY,
+        agent TEXT NOT NULL,
+        prompt TEXT NOT NULL,
+        cwd TEXT NOT NULL,
+        model TEXT,
+        status TEXT NOT NULL DEFAULT 'running',
+        exit_code INTEGER,
+        started_at TEXT NOT NULL DEFAULT (datetime('now')),
+        finished_at TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS agent_definitions (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        command TEXT NOT NULL,
+        default_args TEXT NOT NULL DEFAULT '[]',
+        model TEXT,
+        is_primary INTEGER NOT NULL DEFAULT 0
+      );
+    `);
+
+    this.seedDefaultAgents();
+  }
+
+  private seedDefaultAgents(): void {
+    const existing = this.db.prepare("SELECT COUNT(*) as count FROM agent_definitions").get() as { count: number };
+    if (existing.count > 0) return;
+
+    const insert = this.db.prepare(
+      "INSERT INTO agent_definitions (id, name, command, default_args, model, is_primary) VALUES (?, ?, ?, ?, ?, ?)"
+    );
+
+    insert.run("copilot", "Copilot CLI", "copilot", JSON.stringify(["-i", "--yolo", "--no-ask-user"]), null, 1);
+    insert.run("claude", "Claude Code", "claude", JSON.stringify(["--dangerously-skip-permissions"]), null, 0);
+  }
+
+  close(): void {
+    this.db.close();
+  }
+}
+
+export class SqliteProjectRepository implements ProjectRepository {
+  constructor(private readonly db: BetterSqlite3.Database) {}
+
+  create(name: string, location: string): Project {
+    const stmt = this.db.prepare("INSERT INTO projects (name, location) VALUES (?, ?) RETURNING *");
+    return this.mapProject(stmt.get(name, location) as Record<string, unknown>);
+  }
+
+  findAll(): Project[] {
+    const rows = this.db.prepare("SELECT * FROM projects ORDER BY created_at DESC").all();
+    return rows.map((r) => this.mapProject(r as Record<string, unknown>));
+  }
+
+  findById(id: number): Project | undefined {
+    const row = this.db.prepare("SELECT * FROM projects WHERE id = ?").get(id);
+    return row ? this.mapProject(row as Record<string, unknown>) : undefined;
+  }
+
+  remove(id: number): boolean {
+    const result = this.db.prepare("DELETE FROM projects WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
+  private mapProject(row: Record<string, unknown>): Project {
+    return {
+      id: row.id as number,
+      name: row.name as string,
+      location: row.location as string,
+      createdAt: row.created_at as string,
+    };
+  }
+}
+
+export class SqliteTicketRepository implements TicketRepository {
+  constructor(private readonly db: BetterSqlite3.Database) {}
+
+  create(title: string, projectId?: number): Ticket {
+    const stmt = this.db.prepare(
+      "INSERT INTO tickets (title, project_id) VALUES (?, ?) RETURNING *"
+    );
+    return this.mapTicket(stmt.get(title, projectId ?? null) as Record<string, unknown>);
+  }
+
+  findAll(): Ticket[] {
+    const rows = this.db.prepare("SELECT * FROM tickets ORDER BY updated_at DESC").all();
+    return rows.map((r) => this.mapTicket(r as Record<string, unknown>));
+  }
+
+  findById(id: number): Ticket | undefined {
+    const row = this.db.prepare("SELECT * FROM tickets WHERE id = ?").get(id);
+    return row ? this.mapTicket(row as Record<string, unknown>) : undefined;
+  }
+
+  updateStage(id: number, stage: TicketStage): boolean {
+    const result = this.db.prepare(
+      "UPDATE tickets SET stage = ?, updated_at = datetime('now') WHERE id = ?"
+    ).run(stage, id);
+    return result.changes > 0;
+  }
+
+  remove(id: number): boolean {
+    const result = this.db.prepare("DELETE FROM tickets WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
+  private mapTicket(row: Record<string, unknown>): Ticket {
+    return {
+      id: row.id as number,
+      title: row.title as string,
+      stage: row.stage as TicketStage,
+      projectId: row.project_id as number | null,
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    };
+  }
+}
+
+export class SqliteAgentRunRepository implements AgentRunRepository {
+  constructor(private readonly db: BetterSqlite3.Database) {}
+
+  create(run: Omit<AgentRun, "id" | "startedAt" | "finishedAt">): AgentRun {
+    const id = randomUUID();
+    const stmt = this.db.prepare(
+      "INSERT INTO agent_runs (id, agent, prompt, cwd, model, status) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
+    );
+    return this.mapRun(stmt.get(id, run.agent, run.prompt, run.cwd, run.model, run.status) as Record<string, unknown>);
+  }
+
+  findAll(limit = 50): AgentRun[] {
+    const rows = this.db.prepare("SELECT * FROM agent_runs ORDER BY started_at DESC LIMIT ?").all(limit);
+    return rows.map((r) => this.mapRun(r as Record<string, unknown>));
+  }
+
+  findById(id: string): AgentRun | undefined {
+    const row = this.db.prepare("SELECT * FROM agent_runs WHERE id = ?").get(id);
+    return row ? this.mapRun(row as Record<string, unknown>) : undefined;
+  }
+
+  updateStatus(id: string, status: AgentRun["status"], exitCode?: number): boolean {
+    const result = this.db.prepare(
+      "UPDATE agent_runs SET status = ?, exit_code = ?, finished_at = datetime('now') WHERE id = ?"
+    ).run(status, exitCode ?? null, id);
+    return result.changes > 0;
+  }
+
+  private mapRun(row: Record<string, unknown>): AgentRun {
+    return {
+      id: row.id as string,
+      agent: row.agent as string,
+      prompt: row.prompt as string,
+      cwd: row.cwd as string,
+      model: row.model as string | null,
+      status: row.status as AgentRun["status"],
+      exitCode: row.exit_code as number | null,
+      startedAt: row.started_at as string,
+      finishedAt: row.finished_at as string | null,
+    };
+  }
+}

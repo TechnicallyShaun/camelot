@@ -1,60 +1,90 @@
-import Fastify from 'fastify';
-import fastifyStatic from '@fastify/static';
-import fastifyWebSocket from '@fastify/websocket';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { createServer } from "node:http";
+import { WebSocketServer, type WebSocket } from "ws";
+import { mkdirSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { loadConfig } from "./config.js";
+import { createLogger } from "./logger.js";
+import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository } from "./db/sqlite.js";
+import { ProcessAgentSpawner } from "./agents/spawner.js";
+import { createApp } from "./server/app.js";
+import type { AgentEvent } from "./agents/types.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const config = loadConfig();
+const logger = createLogger(config);
 
-const fastify = Fastify({ logger: true });
+// Ensure data directory exists
+const dataDir = resolve(process.cwd(), config.dataDir);
+if (!existsSync(dataDir)) {
+  mkdirSync(dataDir, { recursive: true });
+}
 
-// Register WebSocket plugin first
-await fastify.register(fastifyWebSocket);
+// Initialize database
+const dbPath = resolve(dataDir, "camelot.db");
+const database = new SqliteDatabase(dbPath);
+database.initialize();
+logger.info({ dbPath }, "Database initialized");
 
-// WebSocket route for real-time updates
-fastify.register(async function (fastify) {
-  fastify.get('/ws', { websocket: true }, (connection, req) => {
-    connection.socket.send('Connected to Camelot');
-    
-    connection.socket.on('message', (message: any) => {
-      // Handle incoming WebSocket messages
-      console.log('Received message:', message.toString());
-      connection.socket.send(`Echo: ${message}`);
-    });
+// Create repositories
+const projects = new SqliteProjectRepository(database.db);
+const tickets = new SqliteTicketRepository(database.db);
+const agentRuns = new SqliteAgentRunRepository(database.db);
+
+// Create agent spawner
+const spawner = new ProcessAgentSpawner(logger);
+
+// Create Express app
+const app = createApp({ projects, tickets, agentRuns, logger });
+
+// Create HTTP server
+const server = createServer(app);
+
+// WebSocket server
+const wss = new WebSocketServer({ server, path: "/ws" });
+const clients = new Set<WebSocket>();
+
+wss.on("connection", (ws) => {
+  clients.add(ws);
+  logger.info("WebSocket client connected");
+
+  ws.on("close", () => {
+    clients.delete(ws);
+    logger.info("WebSocket client disconnected");
   });
 });
 
-// API routes
-fastify.get('/api/health', async (request, reply) => {
-  return { status: 'ok', timestamp: new Date().toISOString() };
-});
-
-fastify.get('/api/tickets', async (request, reply) => {
-  // TODO: Return tickets from database
-  return { tickets: [] };
-});
-
-fastify.post('/api/tickets', async (request, reply) => {
-  // TODO: Create new ticket
-  reply.code(201);
-  return { message: 'Ticket created' };
-});
-
-// Register static file serving
-await fastify.register(fastifyStatic, {
-  root: path.join(__dirname, '..', 'public'),
-  prefix: '/',
-});
-
-const start = async () => {
-  try {
-    await fastify.listen({ port: 1187, host: '0.0.0.0' });
-    console.log('🏰 Camelot server running on http://localhost:1187');
-  } catch (err) {
-    fastify.log.error(err);
-    process.exit(1);
+function broadcast(type: string, data: unknown): void {
+  const message = JSON.stringify({ type, data });
+  for (const client of clients) {
+    if (client.readyState === 1) {
+      client.send(message);
+    }
   }
-};
+}
 
-start();
+// Forward agent events to WebSocket clients
+spawner.onEvent((event: AgentEvent) => {
+  broadcast("agent-event", event);
+});
+
+// Start server
+server.listen(config.port, config.host, () => {
+  logger.info({ port: config.port, host: config.host }, "🏰 Camelot is running");
+  logger.info(`   UI: http://${config.host}:${config.port}`);
+});
+
+// Graceful shutdown
+process.on("SIGINT", () => {
+  logger.info("Shutting down...");
+  wss.close();
+  server.close();
+  database.close();
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  logger.info("Shutting down...");
+  wss.close();
+  server.close();
+  database.close();
+  process.exit(0);
+});
