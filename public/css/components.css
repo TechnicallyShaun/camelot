@@ -515,6 +515,8 @@ select.form-input {
 
 .modal-content {
   padding: var(--space-6);
+  overflow-y: auto;
+  max-height: 85vh;
 }
 
 .modal-header {

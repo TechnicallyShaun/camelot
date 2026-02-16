@@ -169,7 +169,7 @@ export class SqliteTicketRepository implements TicketRepository {
   }
 
   findAll(): Ticket[] {
-    const rows = this.db.prepare("SELECT * FROM tickets ORDER BY updated_at DESC").all();
+    const rows = this.db.prepare("SELECT * FROM tickets ORDER BY created_at DESC").all();
     return rows.map((r) => this.mapTicket(r as Record<string, unknown>));
   }
 

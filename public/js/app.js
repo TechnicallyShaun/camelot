@@ -1219,14 +1219,20 @@ class CamelotApp {
 
   // MODAL SYSTEM
   setupModals() {
-    // Modal close buttons
-    document.querySelectorAll('.modal-close, .modal-overlay').forEach(element => {
-      element.addEventListener('click', (e) => {
-        if (e.target === element) {
-          this.closeAllModals();
-        }
+    // Modal close buttons - each close button closes modals on click
+    document.querySelectorAll('.modal-close').forEach(element => {
+      element.addEventListener('click', () => {
+        this.closeAllModals();
       });
     });
+
+    // Overlay click closes modals
+    const overlay = document.getElementById('modalOverlay');
+    if (overlay) {
+      overlay.addEventListener('click', () => {
+        this.closeAllModals();
+      });
+    }
 
     // Form submissions
     this.setupFormHandlers();
@@ -1522,31 +1528,13 @@ class CamelotApp {
 
   // PANEL MANAGEMENT
   toggleBottomPanel() {
-    const bottomPanel = document.getElementById('bottomPanel');
-    bottomPanel.classList.toggle('collapsed');
+    // Bottom panel removed
   }
 
   // NOTIFICATIONS AND LOGGING
   addLogEntry(logData) {
-    const logEntries = document.getElementById('logEntries');
-    if (!logEntries) return;
-
-    const logEntry = document.createElement('div');
-    logEntry.className = `log-entry ${(logData.level || 'info').toLowerCase()}`;
-    logEntry.innerHTML = `
-      <span class="log-timestamp">${logData.timestamp || new Date().toLocaleTimeString()}</span>
-      <span class="log-level">${logData.level || 'INFO'}</span>
-      <span class="log-message">${logData.message}</span>
-    `;
-    
-    logEntries.appendChild(logEntry);
-    logEntries.scrollTop = logEntries.scrollHeight;
-    
-    // Limit log entries
-    const entries = logEntries.querySelectorAll('.log-entry');
-    if (entries.length > 100) {
-      entries[0].remove();
-    }
+    // Bottom panel removed — log to console only
+    console.log(`[${logData.level || 'INFO'}] ${logData.message}`);
   }
 
   showSuccess(message) {

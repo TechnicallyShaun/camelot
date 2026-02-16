@@ -4,10 +4,9 @@
 #app {
   display: grid;
   grid-template-areas: 
-    "sidebar main-content"
-    "sidebar bottom-panel";
-  grid-template-columns: 60px 1fr;  /* Thin sidebar, full width content */
-  grid-template-rows: 1fr var(--bottom-panel-height);
+    "sidebar main-content";
+  grid-template-columns: 60px 1fr;
+  grid-template-rows: 1fr;
   height: 100vh;
   overflow: hidden;
 }
@@ -119,26 +118,27 @@
 .header {
   display: flex;
   align-items: center;
-  padding: var(--space-3) var(--space-6);  /* Reduced padding for thinner header */
-  border-bottom: 1px solid var(--border-secondary);
+  padding: var(--space-2) var(--space-6);
   background: var(--bg-primary);
-  min-height: 50px;  /* Reduced from 60px to make it thinner */
+  min-height: 36px;
   z-index: 50;
 }
 
 .page-title {
-  font-size: var(--text-xl);  /* Slightly smaller for thinner header */
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-normal);
+  color: var(--text-tertiary);
   margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 /* Content Area - Full width available */
 .content {
   flex: 1;
-  padding: var(--space-6);
+  padding: var(--space-3) var(--space-4);
   overflow-y: auto;
-  width: 100%;  /* Use all available width */
+  width: 100%;
 }
 
 .section {
@@ -163,7 +163,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .dashboard-sidebar {
@@ -174,15 +174,14 @@
 }
 
 .sidebar-section {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  overflow-y: auto;
-  max-height: 100%;
+  gap: var(--space-2);
+  overflow-y: visible;
 }
 
 .sidebar-title {
@@ -198,15 +197,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-2) var(--space-3);
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-md);
+  padding: var(--space-1) 0;
+  background: transparent;
+  border-radius: 0;
   cursor: default;
-  transition: background var(--duration-fast) var(--ease-out);
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
 .ticket-item:hover {
-  background: var(--bg-primary);
+  background: transparent;
 }
 
 .ticket-item .ticket-title {
@@ -242,26 +241,27 @@
 .terminal-container {
   background: var(--bg-secondary);
   border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--space-4);
+  border-radius: 0;
+  margin-bottom: var(--space-3);
   display: flex;
   flex-direction: column;
 }
 
 .terminal-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
+  padding: 0 var(--space-2);
   border-bottom: 1px solid var(--border-secondary);
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--bg-secondary);
+  border-radius: 0;
+  min-height: 32px;
 }
 
 .terminal-tabs {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  align-items: flex-end;
+  gap: 0;
 }
 
 .terminal-controls {
@@ -309,14 +309,16 @@
 .terminal-tab {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
   background: var(--bg-secondary);
   border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
+  border-bottom: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  font-size: var(--text-xs);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
+  margin-bottom: -1px;
 }
 
 .terminal-tab:hover {
@@ -324,9 +326,10 @@
 }
 
 .terminal-tab.active {
-  background: var(--accent-amber);
-  color: var(--text-inverse);
-  border-color: var(--accent-amber);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-color: var(--border-secondary);
+  border-bottom: 1px solid var(--bg-primary);
 }
 
 .terminal-tab-icon {
@@ -419,10 +422,11 @@
 
 .new-ticket-input {
   flex: 1;
-  padding: var(--space-3);
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-md);
-  background: var(--bg-secondary);
+  padding: var(--space-2) 0;
+  border: none;
+  border-bottom: 1px solid var(--border-secondary);
+  border-radius: 0;
+  background: transparent;
   color: var(--text-primary);
   font-size: var(--text-sm);
   transition: all var(--duration-fast);
@@ -430,27 +434,27 @@
 
 .new-ticket-input:focus {
   outline: none;
-  border-color: var(--accent-amber);
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+  border-bottom-color: var(--accent-amber);
+  box-shadow: none;
 }
 
 .new-ticket-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: var(--accent-amber);
-  color: var(--text-inverse);
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  color: var(--text-tertiary);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--duration-fast);
 }
 
 .new-ticket-btn:hover {
-  background: var(--accent-amber-dark, #d97706);
-  transform: translateY(-1px);
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
 }
 
 /* Tickets Section */
@@ -459,10 +463,10 @@
 }
 
 .tickets-list {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
 }
 
 /* Ticket Items */
@@ -470,13 +474,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-4);
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--border-secondary);
-  transition: background var(--duration-fast);
+  transition: color var(--duration-fast);
 }
 
 .ticket-item:hover {
-  background: var(--bg-tertiary);
+  background: transparent;
 }
 
 .ticket-item:last-child {
@@ -923,13 +927,6 @@
 }
 
 @media (max-width: 768px) {
-  #app {
-    grid-template-areas: 
-      "sidebar main-content"
-      "sidebar main-content";
-    grid-template-rows: 1fr;
-  }
-  
   .sidebar {
     position: fixed;
     top: 0;
@@ -946,24 +943,8 @@
   
   #app {
     grid-template-columns: 1fr;
-    grid-template-areas: 
-      "main-content"
-      "main-content";
-  }
-  
-  .bottom-panel {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: var(--bottom-panel-height);
-    transform: translateY(100%);
-    transition: transform var(--duration-normal);
-    z-index: 200;
-  }
-  
-  .bottom-panel.open {
-    transform: translateY(0);
+    grid-template-areas: "main-content";
+    grid-template-rows: 1fr;
   }
   
   .projects-grid,
