@@ -316,10 +316,14 @@ class CamelotApp {
 
   async createTicket(title) {
     try {
+      const selectedProjectId = document.getElementById('projectSelector')?.value;
+      const body = { title };
+      if (selectedProjectId) body.projectId = Number(selectedProjectId);
+
       const ticket = await this.apiCall('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title })
+        body: JSON.stringify(body)
       });
       
       this.tickets.unshift(ticket);
@@ -458,12 +462,13 @@ class CamelotApp {
 
     this.createTerminalTab(sessionId, this.selectedAgent);
 
-    // Store context for this terminal
+    // Store context for this terminal and show context bar immediately
     const termData = this.terminals.get(sessionId);
     if (termData) {
       termData.ticketId = ticketId;
       termData.projectId = ticket.projectId;
       termData.skillPrompt = prompt;
+      this.updateTerminalContextBar(termData);
     }
   }
 

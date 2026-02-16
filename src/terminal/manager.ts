@@ -109,9 +109,18 @@ export class TerminalManager {
 
       // Auto-start the agent after a brief delay to ensure terminal is ready
       setTimeout(() => {
-        const agentCommand = this.buildAgentCommand(agent, prompt);
+        const agentCommand = this.buildAgentCommand(agent);
         this.logger.info({ sessionId: id, command: agentCommand }, "Auto-starting agent");
         pty.write(`${agentCommand}\r`);
+
+        // If there's a prompt, inject it after agent has time to start
+        if (prompt) {
+          const delay = agent.command === 'copilot' ? 3000 : 1500;
+          setTimeout(() => {
+            this.logger.info({ sessionId: id, prompt }, "Injecting skill prompt");
+            pty.write(`${prompt}\r`);
+          }, delay);
+        }
       }, 500);
 
       this.logger.info({ sessionId: id, shell, agent: agent.name }, "Terminal session created");
@@ -184,25 +193,8 @@ export class TerminalManager {
     return `term-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   }
 
-  private buildAgentCommand(agent: any, prompt?: string): string {
+  private buildAgentCommand(agent: any): string {
     const args = [...agent.defaultArgs];
-    
-    if (prompt) {
-      const escaped = prompt.replace(/"/g, '\\"');
-      // Copilot CLI: use -i flag for initial prompt
-      if (agent.command === 'copilot') {
-        // Remove existing -i if present, then add with prompt
-        const filteredArgs = args.filter((a: string) => a !== '-i');
-        return `${agent.command} ${filteredArgs.join(' ')} -i "${escaped}"`;
-      }
-      // Claude Code: positional argument for initial prompt
-      if (agent.command === 'claude') {
-        return `${agent.command} "${escaped}" ${args.join(' ')}`;
-      }
-      // Generic: try positional arg
-      return `${agent.command} ${args.join(' ')} "${escaped}"`;
-    }
-    
     return `${agent.command} ${args.join(' ')}`;
   }
 
