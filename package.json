@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "AI-powered development cockpit. Multi-agent orchestration for Copilot CLI and Claude Code.",
   "main": "dist/index.js",
+  "bin": {
+    "camelot-cli": "dist/cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
