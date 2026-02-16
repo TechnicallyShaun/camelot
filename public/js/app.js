@@ -1318,6 +1318,14 @@ class CamelotApp {
     });
     resizeObserver.observe(terminalContainer);
     
+    // Listen for bell character (agent completion signal)
+    terminal.onBell(() => {
+      const termData = this.terminals.get(sessionId);
+      if (termData && this.activeTerminal !== sessionId) {
+        termData.tab.classList.add('terminal-tab-alert');
+      }
+    });
+
     // Handle terminal input
     terminal.onData(data => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -1368,6 +1376,7 @@ class CamelotApp {
     const terminalData = this.terminals.get(sessionId);
     if (terminalData) {
       terminalData.tab.classList.add('active');
+      terminalData.tab.classList.remove('terminal-tab-alert');
       terminalData.container.classList.add('active');
       this.activeTerminal = sessionId;
       
@@ -1428,6 +1437,11 @@ class CamelotApp {
     const terminalData = this.terminals.get(message.sessionId);
     if (terminalData) {
       terminalData.terminal.write(`\r\n\x1b[91mProcess exited with code ${message.exitCode}\x1b[0m\r\n`);
+      // Show completion indicator on tab
+      terminalData.tab.classList.add('terminal-tab-exited');
+      if (this.activeTerminal !== message.sessionId) {
+        terminalData.tab.classList.add('terminal-tab-alert');
+      }
     }
   }
 

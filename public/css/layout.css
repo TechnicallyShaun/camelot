@@ -381,6 +381,20 @@
   background: rgba(0, 0, 0, 0.1);
 }
 
+/* Terminal tab alert (bell / process exit) */
+.terminal-tab-alert {
+  animation: tab-pulse 1.5s ease-in-out infinite;
+}
+
+.terminal-tab-exited .terminal-tab-icon {
+  opacity: 0.5;
+}
+
+@keyframes tab-pulse {
+  0%, 100% { background: transparent; }
+  50% { background: rgba(245, 158, 11, 0.15); }
+}
+
 /* Agent Selector */
 .agent-selector {
   display: flex;
