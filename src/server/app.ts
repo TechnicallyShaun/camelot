@@ -11,7 +11,7 @@ export function createApp(deps: RoutesDeps): express.Express {
   app.use("/api", createApiRouter(deps));
 
   // Serve static UI files
-  const uiDir = resolve(__dirname, "../../ui");
+  const uiDir = resolve(__dirname, "../../public");
   app.use(express.static(uiDir));
   
   // Serve node_modules for frontend dependencies

@@ -40,6 +40,27 @@ class CamelotApp {
     });
   }
 
+  // Terminal setup
+  setupTerminal() {
+    const newTerminalBtn = document.getElementById('newTerminalBtn');
+    const terminalSettingsBtn = document.getElementById('terminalSettingsBtn');
+    
+    if (newTerminalBtn) {
+      newTerminalBtn.addEventListener('click', () => {
+        this.createNewTerminal();
+      });
+    }
+
+    if (terminalSettingsBtn) {
+      terminalSettingsBtn.addEventListener('click', () => {
+        this.openAgentSettings();
+      });
+    }
+
+    // Load agents for agent select dropdowns
+    this.loadAgents();
+  }
+
   // WebSocket connection
   initializeWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -84,6 +105,18 @@ class CamelotApp {
           break;
         case 'log_entry':
           this.addLogEntry(message.data);
+          break;
+        case 'terminal-created':
+          this.handleTerminalCreated(message);
+          break;
+        case 'terminal-data':
+          this.handleTerminalData(message);
+          break;
+        case 'terminal-exit':
+          this.handleTerminalExit(message);
+          break;
+        case 'terminal-error':
+          this.handleTerminalError(message);
           break;
         default:
           console.log('Unknown message type:', message.type);
@@ -137,6 +170,14 @@ class CamelotApp {
     if (newTicketBtn) {
       newTicketBtn.addEventListener('click', () => {
         this.openModal('newTicketModal');
+      });
+    }
+
+    // Terminal launcher button (if it exists)
+    const terminalLauncherBtn = document.getElementById('terminalLauncherBtn');
+    if (terminalLauncherBtn) {
+      terminalLauncherBtn.addEventListener('click', () => {
+        this.launchExternalTerminal();
       });
     }
 
@@ -380,12 +421,28 @@ class CamelotApp {
       });
     }
 
+    const agentForm = document.getElementById('agentForm');
+    if (agentForm) {
+      agentForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.handleAgentSubmission(e.target);
+      });
+    }
+
     // Cancel buttons
-    document.querySelectorAll('#cancelTicketBtn').forEach(btn => {
+    document.querySelectorAll('#cancelTicketBtn, #cancelAgentBtn').forEach(btn => {
       btn.addEventListener('click', () => {
         this.closeAllModals();
       });
     });
+
+    // Add agent button
+    const addAgentBtn = document.getElementById('addAgentBtn');
+    if (addAgentBtn) {
+      addAgentBtn.addEventListener('click', () => {
+        this.openAddAgentModal();
+      });
+    }
 
     // ESC key to close modals
     document.addEventListener('keydown', (e) => {
@@ -555,10 +612,404 @@ class CamelotApp {
 
   async loadAgents() {
     try {
-      // TODO: Implement agent API endpoint
-      console.log('🤖 Loading agents...');
+      const response = await fetch('/api/agents');
+      const data = await response.json();
+      this.agents = data;
+      console.log('🤖 Loaded agents:', data);
+      
+      // Update agent dropdowns
+      this.updateAgentDropdowns();
     } catch (error) {
       console.error('❌ Failed to load agents:', error);
+    }
+  }
+
+  updateAgentDropdowns() {
+    // Update ticket agent dropdown
+    const ticketAgentSelect = document.getElementById('ticketAgent');
+    if (ticketAgentSelect) {
+      // Keep existing options, add loaded agents
+      const existingOptions = Array.from(ticketAgentSelect.options).map(opt => opt.value);
+      
+      this.agents.forEach(agent => {
+        if (!existingOptions.includes(agent.id)) {
+          const option = document.createElement('option');
+          option.value = agent.id;
+          option.textContent = agent.name;
+          ticketAgentSelect.appendChild(option);
+        }
+      });
+    }
+  }
+
+  // External Terminal Launch
+  async launchExternalTerminal() {
+    const primary = this.agents.find(agent => agent.isPrimary);
+    if (!primary) {
+      this.showNotification('No primary agent configured. Please set up agents first.', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/terminal/launch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agentId: primary.id,
+          projectPath: null // TODO: Add project selection
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        this.showNotification(`Launched ${result.agent} terminal`, 'success');
+      } else {
+        throw new Error('Failed to launch terminal');
+      }
+    } catch (error) {
+      console.error('❌ Failed to launch external terminal:', error);
+      this.showNotification('Failed to launch external terminal', 'error');
+    }
+  }
+
+  // Terminal Management
+  createNewTerminal() {
+    const primary = this.agents.find(agent => agent.isPrimary);
+    if (!primary) {
+      this.showNotification('No primary agent configured. Please set up agents first.', 'error');
+      return;
+    }
+
+    const sessionId = `term-${Date.now()}`;
+    
+    // Send WebSocket message to create terminal
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'terminal-create',
+        sessionId: sessionId,
+        agentId: primary.id,
+        projectPath: null // TODO: Add project selection
+      }));
+    }
+
+    // Create terminal tab immediately for better UX
+    this.createTerminalTab(sessionId, primary, 'connecting');
+  }
+
+  createTerminalTab(sessionId, agent, status = 'connecting') {
+    const tabsContainer = document.getElementById('terminalTabs');
+    const terminalContent = document.getElementById('terminalContent');
+    
+    // Hide empty state
+    const emptyState = terminalContent.querySelector('.terminal-empty');
+    if (emptyState) {
+      emptyState.style.display = 'none';
+    }
+
+    // Create tab
+    const tab = document.createElement('div');
+    tab.className = 'terminal-tab';
+    tab.dataset.sessionId = sessionId;
+    
+    tab.innerHTML = `
+      <span class="terminal-tab-title">${agent.name}</span>
+      <span class="terminal-tab-status status-${status}"></span>
+      <button class="terminal-tab-close" aria-label="Close terminal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    `;
+
+    // Tab click handler
+    tab.addEventListener('click', (e) => {
+      if (!e.target.closest('.terminal-tab-close')) {
+        this.switchTerminal(sessionId);
+      }
+    });
+
+    // Close button handler
+    tab.querySelector('.terminal-tab-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.closeTerminal(sessionId);
+    });
+
+    // Add tab before the new terminal button
+    const newTerminalBtn = document.getElementById('newTerminalBtn');
+    tabsContainer.insertBefore(tab, newTerminalBtn);
+
+    // Create terminal container
+    const terminalContainer = document.createElement('div');
+    terminalContainer.className = 'terminal-instance';
+    terminalContainer.dataset.sessionId = sessionId;
+    
+    // Initialize xterm.js
+    const terminal = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: 'JetBrains Mono, Consolas, monospace',
+      theme: {
+        background: '#0d1117',
+        foreground: '#e6edf3',
+        cursor: '#f0f6fc',
+        selection: '#264f78'
+      }
+    });
+    
+    const fitAddon = new FitAddon();
+    terminal.loadAddon(fitAddon);
+    
+    terminal.open(terminalContainer);
+    fitAddon.fit();
+    
+    // Handle terminal input
+    terminal.onData(data => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({
+          type: 'terminal-input',
+          sessionId: sessionId,
+          data: data
+        }));
+      }
+    });
+
+    // Handle resize
+    terminal.onResize(size => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({
+          type: 'terminal-resize',
+          sessionId: sessionId,
+          cols: size.cols,
+          rows: size.rows
+        }));
+      }
+    });
+
+    terminalContent.appendChild(terminalContainer);
+    
+    // Store terminal instance
+    this.terminals.set(sessionId, {
+      terminal,
+      fitAddon,
+      tab,
+      container: terminalContainer,
+      agent,
+      status
+    });
+
+    // Switch to this terminal
+    this.switchTerminal(sessionId);
+
+    // Setup resize observer
+    const resizeObserver = new ResizeObserver(() => {
+      if (this.activeTerminal === sessionId) {
+        fitAddon.fit();
+      }
+    });
+    resizeObserver.observe(terminalContainer);
+
+    return sessionId;
+  }
+
+  switchTerminal(sessionId) {
+    // Deactivate all tabs and terminals
+    document.querySelectorAll('.terminal-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    document.querySelectorAll('.terminal-instance').forEach(instance => {
+      instance.classList.remove('active');
+    });
+
+    // Activate selected terminal
+    const terminalData = this.terminals.get(sessionId);
+    if (terminalData) {
+      terminalData.tab.classList.add('active');
+      terminalData.container.classList.add('active');
+      this.activeTerminal = sessionId;
+      
+      // Fit terminal on activation
+      setTimeout(() => {
+        terminalData.fitAddon.fit();
+      }, 100);
+    }
+  }
+
+  closeTerminal(sessionId) {
+    const terminalData = this.terminals.get(sessionId);
+    if (!terminalData) return;
+
+    // Send close message to server
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'terminal-kill',
+        sessionId: sessionId
+      }));
+    }
+
+    // Remove from DOM
+    terminalData.tab.remove();
+    terminalData.container.remove();
+    terminalData.terminal.dispose();
+
+    // Remove from storage
+    this.terminals.delete(sessionId);
+
+    // Show empty state if no terminals left
+    if (this.terminals.size === 0) {
+      const emptyState = document.querySelector('.terminal-empty');
+      if (emptyState) {
+        emptyState.style.display = 'flex';
+      }
+      this.activeTerminal = null;
+    } else if (this.activeTerminal === sessionId) {
+      // Switch to another terminal if this was active
+      const remainingTerminals = Array.from(this.terminals.keys());
+      if (remainingTerminals.length > 0) {
+        this.switchTerminal(remainingTerminals[0]);
+      }
+    }
+  }
+
+  // WebSocket terminal message handlers
+  handleTerminalCreated(message) {
+    const terminalData = this.terminals.get(message.sessionId);
+    if (terminalData) {
+      terminalData.status = 'connected';
+      const statusElement = terminalData.tab.querySelector('.terminal-tab-status');
+      if (statusElement) {
+        statusElement.className = 'terminal-tab-status status-connected';
+      }
+      console.log('🔗 Terminal connected:', message.sessionId);
+    }
+  }
+
+  handleTerminalData(message) {
+    const terminalData = this.terminals.get(message.sessionId);
+    if (terminalData) {
+      terminalData.terminal.write(message.data);
+    }
+  }
+
+  handleTerminalExit(message) {
+    const terminalData = this.terminals.get(message.sessionId);
+    if (terminalData) {
+      terminalData.status = 'disconnected';
+      const statusElement = terminalData.tab.querySelector('.terminal-tab-status');
+      if (statusElement) {
+        statusElement.className = 'terminal-tab-status status-error';
+      }
+      terminalData.terminal.write(`\r\n\x1b[91mProcess exited with code ${message.exitCode}\x1b[0m\r\n`);
+      console.log('💀 Terminal exited:', message.sessionId, 'Exit code:', message.exitCode);
+    }
+  }
+
+  handleTerminalError(message) {
+    console.error('❌ Terminal error:', message.error);
+    this.showNotification(message.error, 'error');
+  }
+
+  // Agent Configuration
+  async openAgentSettings() {
+    await this.loadAgents(); // Refresh agent list
+    this.renderAgentList();
+    this.openModal('agentSettingsModal');
+  }
+
+  renderAgentList() {
+    const agentList = document.getElementById('agentList');
+    if (!agentList) return;
+
+    agentList.innerHTML = this.agents.map(agent => `
+      <div class="agent-item ${agent.isPrimary ? 'primary' : ''}" data-agent-id="${agent.id}">
+        <div class="agent-info">
+          <h3 class="agent-name">
+            ${agent.name}
+            ${agent.isPrimary ? '<span class="agent-primary-badge">Primary</span>' : ''}
+          </h3>
+          <p class="agent-command">${agent.command} ${agent.defaultArgs.join(' ')}</p>
+        </div>
+        <div class="agent-actions">
+          ${!agent.isPrimary ? `
+            <button class="btn btn-sm btn-ghost" onclick="camelot.setPrimaryAgent('${agent.id}')">
+              Set Primary
+            </button>
+          ` : ''}
+          <button class="btn btn-sm btn-ghost" onclick="camelot.editAgent('${agent.id}')">
+            Edit
+          </button>
+          ${!agent.isPrimary ? `
+            <button class="btn btn-sm btn-ghost" onclick="camelot.deleteAgent('${agent.id}')">
+              Delete
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async setPrimaryAgent(agentId) {
+    try {
+      const response = await fetch(`/api/agents/${agentId}/set-primary`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        this.showNotification('Primary agent updated successfully!', 'success');
+        await this.loadAgents();
+        this.renderAgentList();
+      } else {
+        throw new Error('Failed to set primary agent');
+      }
+    } catch (error) {
+      console.error('❌ Failed to set primary agent:', error);
+      this.showNotification('Failed to set primary agent', 'error');
+    }
+  }
+
+  editAgent(agentId) {
+    const agent = this.agents.find(a => a.id === agentId);
+    if (!agent) return;
+
+    // Pre-fill form
+    document.getElementById('agentId').value = agent.id;
+    document.getElementById('agentName').value = agent.name;
+    document.getElementById('agentCommand').value = agent.command;
+    document.getElementById('agentArgs').value = agent.defaultArgs.join(' ');
+    document.getElementById('agentModel').value = agent.model || '';
+    
+    // Disable ID field for editing
+    document.getElementById('agentId').disabled = true;
+    document.getElementById('editAgentTitle').textContent = 'Edit Agent';
+    document.getElementById('saveAgentBtn').textContent = 'Update Agent';
+    
+    // Store editing state
+    this.editingAgentId = agentId;
+    
+    this.openModal('editAgentModal');
+  }
+
+  async deleteAgent(agentId) {
+    if (!confirm('Are you sure you want to delete this agent?')) return;
+
+    try {
+      const response = await fetch(`/api/agents/${agentId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        this.showNotification('Agent deleted successfully!', 'success');
+        await this.loadAgents();
+        this.renderAgentList();
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete agent');
+      }
+    } catch (error) {
+      console.error('❌ Failed to delete agent:', error);
+      this.showNotification(error.message || 'Failed to delete agent', 'error');
     }
   }
 
@@ -605,6 +1056,71 @@ class CamelotApp {
       // Remove loading state
       const submitBtn = form.querySelector('button[type="submit"]');
       submitBtn.textContent = 'Create Ticket';
+      submitBtn.disabled = false;
+    }
+  }
+
+  openAddAgentModal() {
+    // Clear form
+    document.getElementById('agentForm').reset();
+    
+    // Enable ID field for new agent
+    document.getElementById('agentId').disabled = false;
+    document.getElementById('editAgentTitle').textContent = 'Add Agent';
+    document.getElementById('saveAgentBtn').textContent = 'Save Agent';
+    
+    // Clear editing state
+    this.editingAgentId = null;
+    
+    this.openModal('editAgentModal');
+  }
+
+  async handleAgentSubmission(form) {
+    const formData = new FormData(form);
+    const agentData = {
+      id: formData.get('id') || document.getElementById('agentId').value,
+      name: formData.get('name') || document.getElementById('agentName').value,
+      command: formData.get('command') || document.getElementById('agentCommand').value,
+      defaultArgs: (formData.get('args') || document.getElementById('agentArgs').value).split(' ').filter(Boolean),
+      model: formData.get('model') || document.getElementById('agentModel').value || null
+    };
+
+    try {
+      // Add loading state
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = this.editingAgentId ? 'Updating...' : 'Creating...';
+      submitBtn.disabled = true;
+
+      const url = this.editingAgentId ? `/api/agents/${this.editingAgentId}` : '/api/agents';
+      const method = this.editingAgentId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(agentData)
+      });
+
+      if (response.ok) {
+        const action = this.editingAgentId ? 'updated' : 'created';
+        this.showNotification(`Agent ${action} successfully!`, 'success');
+        this.closeAllModals();
+        form.reset();
+        await this.loadAgents(); // Refresh agent list
+        this.renderAgentList();
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || `Failed to ${this.editingAgentId ? 'update' : 'create'} agent`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to save agent:', error);
+      this.showNotification(error.message || 'Failed to save agent', 'error');
+    } finally {
+      // Remove loading state
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.textContent = this.editingAgentId ? 'Update Agent' : 'Save Agent';
       submitBtn.disabled = false;
     }
   }

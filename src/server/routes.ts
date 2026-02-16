@@ -176,5 +176,35 @@ export function createApiRouter(deps: RoutesDeps): Router {
     res.status(204).end();
   });
 
+  // External Terminal Launch
+  router.post("/terminal/launch", (req: Request, res: Response) => {
+    const { agentId, projectPath, prompt } = req.body as {
+      agentId?: string;
+      projectPath?: string;
+      prompt?: string;
+    };
+
+    try {
+      // Get agent configuration
+      const agent = agentId ? deps.agentDefinitions.findById(agentId) : deps.agentDefinitions.findPrimary();
+      if (!agent) {
+        res.status(404).json({ error: "Agent not found" });
+        return;
+      }
+
+      // For now, just return success - external terminal launching
+      // would be implemented based on the platform
+      res.json({ 
+        success: true, 
+        message: `Would launch ${agent.name} in external terminal`,
+        agent: agent.name,
+        command: `${agent.command} ${agent.defaultArgs.join(' ')}`
+      });
+    } catch (error) {
+      deps.logger.error({ error }, "Failed to launch external terminal");
+      res.status(500).json({ error: "Failed to launch terminal" });
+    }
+  });
+
   return router;
 }
