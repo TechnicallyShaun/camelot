@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readdir, readFile, stat } from 'node:fs/promises';
+import path from 'node:path';
 import { FileSystemSdpPlanReader } from './sdp-plan-reader.js';
 import type { TicketRepository, Ticket } from './types.js';
 import type { Logger } from '../logger.js';
@@ -84,7 +85,7 @@ This is a plan for developing a new feature.
           },
           { title: 'Deploy to staging', completed: true, dependencies: [] },
         ],
-        filePath: '/root/.sdp/plans/feature.md',
+        filePath: path.join('/root', '.sdp', 'plans', 'feature.md'),
         lastModified: new Date('2024-01-15'),
       });
     });
