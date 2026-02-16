@@ -469,8 +469,15 @@ class CamelotApp {
       return;
     }
 
-    activityList.innerHTML = activities.map(activity => {
-      const time = new Date(activity.timestamp).toLocaleTimeString();
+    // Sort newest first, limit 20
+    const sorted = [...activities].sort((a, b) => 
+      new Date(b.timestamp) - new Date(a.timestamp)
+    ).slice(0, 20);
+
+    activityList.innerHTML = sorted.map(activity => {
+      const dt = new Date(activity.timestamp);
+      const dateStr = dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      const timeStr = dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
       const actionIcon = this.getActivityIcon(activity.action);
       const actionClass = this.getActivityClass(activity.action);
       
@@ -481,7 +488,7 @@ class CamelotApp {
           </div>
           <div class="activity-content">
             <div class="activity-title">${this.formatActivityAction(activity)}</div>
-            <div class="activity-meta">${activity.sessionId} • ${time}</div>
+            <div class="activity-meta">${activity.sessionId} • ${dateStr} ${timeStr}</div>
           </div>
         </div>
       `;
