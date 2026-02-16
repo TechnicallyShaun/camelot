@@ -1,5 +1,9 @@
 // Camelot Application JavaScript - Completely functional with real API integration
 
+// xterm.js CDN UMD exports namespaces — unwrap the actual classes
+const XTerm = (typeof Terminal !== 'undefined' && Terminal.Terminal) ? Terminal.Terminal : (typeof Terminal !== 'undefined' ? Terminal : null);
+const XFitAddon = (typeof FitAddon !== 'undefined' && FitAddon.FitAddon) ? FitAddon.FitAddon : (typeof FitAddon !== 'undefined' ? FitAddon : null);
+
 class CamelotApp {
   constructor() {
     this.ws = null;
@@ -1053,7 +1057,7 @@ class CamelotApp {
     }
 
     // Check if Terminal class is available (xterm.js)
-    if (typeof Terminal === 'undefined') {
+    if (!XTerm) {
       console.warn('xterm.js not available, falling back to external terminal');
       this.showError('Terminal not available. Please ensure xterm.js is loaded.');
       return;
@@ -1119,7 +1123,7 @@ class CamelotApp {
     terminalContainer.dataset.sessionId = sessionId;
     
     // Initialize xterm.js
-    const terminal = new Terminal({
+    const terminal = new XTerm({
       cursorBlink: true,
       fontSize: 14,
       fontFamily: 'JetBrains Mono, Consolas, monospace',
@@ -1131,7 +1135,7 @@ class CamelotApp {
       }
     });
     
-    const fitAddon = new FitAddon();
+    const fitAddon = new XFitAddon();
     terminal.loadAddon(fitAddon);
     
     terminal.open(terminalContainer);

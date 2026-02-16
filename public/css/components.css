@@ -503,11 +503,13 @@ select.form-input {
   max-width: 90vw;
   max-height: 90vh;
   opacity: 0;
+  pointer-events: none;
   transition: all var(--duration-normal) var(--ease-out);
 }
 
 .modal.active {
   opacity: 1;
+  pointer-events: auto;
   transform: translate(-50%, -50%) scale(1);
 }
 
