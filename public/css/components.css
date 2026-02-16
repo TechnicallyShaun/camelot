@@ -113,10 +113,11 @@
 
 .form-input {
   width: 100%;
-  padding: var(--space-3);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-md);
+  padding: var(--space-2) 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-secondary);
+  border-radius: 0;
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
@@ -124,9 +125,9 @@
 }
 
 .form-input:focus {
-  border-color: var(--accent-amber);
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
   outline: none;
+  border-bottom-color: var(--accent-amber);
+  box-shadow: none;
 }
 
 .form-input::placeholder {
