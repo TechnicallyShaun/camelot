@@ -112,7 +112,8 @@ function handleWebSocketMessage(ws: WebSocket, message: any): void {
           ws, 
           message.sessionId, 
           message.agentId, 
-          message.projectPath
+          message.projectPath,
+          message.prompt
         );
         logger.info({ sessionId }, "Terminal session created via WebSocket");
       } catch (error) {

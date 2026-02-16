@@ -25,7 +25,7 @@ export class TerminalManager {
     this.agentDefinitions = agentDefinitions;
   }
 
-  createSession(ws: WebSocket, sessionId?: string, agentId?: string, projectPath?: string): string {
+  createSession(ws: WebSocket, sessionId?: string, agentId?: string, projectPath?: string, prompt?: string): string {
     const id = sessionId || this.generateSessionId();
     
     // Get agent configuration, defaulting to primary agent
@@ -109,7 +109,7 @@ export class TerminalManager {
 
       // Auto-start the agent after a brief delay to ensure terminal is ready
       setTimeout(() => {
-        const agentCommand = this.buildAgentCommand(agent);
+        const agentCommand = this.buildAgentCommand(agent, prompt);
         this.logger.info({ sessionId: id, command: agentCommand }, "Auto-starting agent");
         pty.write(`${agentCommand}\r`);
       }, 500);
@@ -184,9 +184,26 @@ export class TerminalManager {
     return `term-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   }
 
-  private buildAgentCommand(agent: any): string {
-    const args = agent.defaultArgs.join(' ');
-    return `${agent.command} ${args}`;
+  private buildAgentCommand(agent: any, prompt?: string): string {
+    const args = [...agent.defaultArgs];
+    
+    if (prompt) {
+      const escaped = prompt.replace(/"/g, '\\"');
+      // Copilot CLI: use -i flag for initial prompt
+      if (agent.command === 'copilot') {
+        // Remove existing -i if present, then add with prompt
+        const filteredArgs = args.filter((a: string) => a !== '-i');
+        return `${agent.command} ${filteredArgs.join(' ')} -i "${escaped}"`;
+      }
+      // Claude Code: positional argument for initial prompt
+      if (agent.command === 'claude') {
+        return `${agent.command} "${escaped}" ${args.join(' ')}`;
+      }
+      // Generic: try positional arg
+      return `${agent.command} ${args.join(' ')} "${escaped}"`;
+    }
+    
+    return `${agent.command} ${args.join(' ')}`;
   }
 
   getSessionInfo(sessionId: string): { agent: any; projectPath: string | null } | null {

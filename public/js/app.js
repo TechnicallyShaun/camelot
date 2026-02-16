@@ -451,7 +451,8 @@ class CamelotApp {
         type: 'terminal-create',
         sessionId: sessionId,
         agentId: this.selectedAgent.id,
-        projectPath: projectPath
+        projectPath: projectPath,
+        prompt: prompt
       }));
     }
 
@@ -463,15 +464,6 @@ class CamelotApp {
       termData.ticketId = ticketId;
       termData.projectId = ticket.projectId;
       termData.skillPrompt = prompt;
-    }
-
-    // Store pending prompt — handleTerminalData will inject when agent is ready
-    const termDataRef = this.terminals.get(sessionId);
-    if (termDataRef) {
-      termDataRef.pendingPrompt = prompt;
-      termDataRef.pendingPromptFallback = setTimeout(() => {
-        this._injectPendingPrompt(sessionId);
-      }, 10000);
     }
   }
 
@@ -1641,39 +1633,6 @@ class CamelotApp {
     const terminalData = this.terminals.get(message.sessionId);
     if (terminalData) {
       terminalData.terminal.write(message.data);
-
-      // Smart prompt injection: detect when agent is ready
-      if (terminalData.pendingPrompt) {
-        const output = message.data;
-        const readyPatterns = [
-          /Describe a task/i,
-          /Type @ to mention/i,
-          /What would you like/i,
-          /[^\\]\>\s*$/,
-        ];
-        const isReady = readyPatterns.some(p => p.test(output));
-        if (isReady) {
-          this._injectPendingPrompt(message.sessionId);
-        }
-      }
-    }
-  }
-
-  _injectPendingPrompt(sessionId) {
-    const termData = this.terminals.get(sessionId);
-    if (!termData || !termData.pendingPrompt) return;
-    const prompt = termData.pendingPrompt;
-    delete termData.pendingPrompt;
-    if (termData.pendingPromptFallback) {
-      clearTimeout(termData.pendingPromptFallback);
-      delete termData.pendingPromptFallback;
-    }
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        type: 'terminal-input',
-        sessionId: sessionId,
-        data: prompt + '\n'
-      }));
     }
   }
 

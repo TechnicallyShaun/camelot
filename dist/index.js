@@ -93,7 +93,7 @@ function handleWebSocketMessage(ws, message) {
     switch (message.type) {
         case "terminal-create":
             try {
-                const sessionId = terminalManager.createSession(ws, message.sessionId, message.agentId, message.projectPath);
+                const sessionId = terminalManager.createSession(ws, message.sessionId, message.agentId, message.projectPath, message.prompt);
                 logger.info({ sessionId }, "Terminal session created via WebSocket");
             }
             catch (error) {
