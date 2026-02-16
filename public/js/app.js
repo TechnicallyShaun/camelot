@@ -12,6 +12,7 @@ class CamelotApp {
     this.terminals = new Map(); // sessionId -> { terminal, session, tab }
     this.activeTerminal = null;
     this.agents = [];
+    this.selectedAgent = null; // Currently selected agent for new terminals
     
     this.init();
   }
@@ -44,6 +45,7 @@ class CamelotApp {
   setupTerminal() {
     const newTerminalBtn = document.getElementById('newTerminalBtn');
     const terminalSettingsBtn = document.getElementById('terminalSettingsBtn');
+    const terminalLauncherBtn = document.getElementById('terminalLauncherBtn');
     
     if (newTerminalBtn) {
       newTerminalBtn.addEventListener('click', () => {
@@ -57,7 +59,13 @@ class CamelotApp {
       });
     }
 
-    // Load agents for agent select dropdowns
+    if (terminalLauncherBtn) {
+      terminalLauncherBtn.addEventListener('click', () => {
+        this.launchExternalTerminal();
+      });
+    }
+
+    // Load agents for agent select dropdowns and setup agent selector
     this.loadAgents();
   }
 
@@ -619,9 +627,70 @@ class CamelotApp {
       
       // Update agent dropdowns
       this.updateAgentDropdowns();
+      
+      // Setup agent selector
+      this.setupAgentSelector();
     } catch (error) {
       console.error('❌ Failed to load agents:', error);
     }
+  }
+
+  setupAgentSelector() {
+    const agentDots = document.getElementById('agentDots');
+    if (!agentDots) return;
+
+    // Clear existing dots
+    agentDots.innerHTML = '';
+
+    // Set default selected agent to primary
+    if (!this.selectedAgent) {
+      this.selectedAgent = this.agents.find(agent => agent.isPrimary) || this.agents[0];
+    }
+
+    // Create dots for each agent
+    this.agents.forEach(agent => {
+      const dot = document.createElement('div');
+      dot.className = `agent-dot ${this.getAgentType(agent)} ${agent.id === (this.selectedAgent?.id) ? 'active' : ''} available`;
+      dot.title = `${agent.name} - Click to select for new terminals`;
+      dot.dataset.agentId = agent.id;
+
+      dot.addEventListener('click', () => {
+        this.selectAgent(agent.id);
+      });
+
+      agentDots.appendChild(dot);
+    });
+  }
+
+  getAgentType(agent) {
+    // Determine agent type based on command or name
+    const name = agent.name.toLowerCase();
+    const command = agent.command.toLowerCase();
+    
+    if (name.includes('copilot') || command.includes('copilot')) {
+      return 'copilot';
+    } else if (name.includes('claude') || command.includes('claude')) {
+      return 'claude';
+    } else {
+      return 'custom';
+    }
+  }
+
+  selectAgent(agentId) {
+    this.selectedAgent = this.agents.find(agent => agent.id === agentId);
+    
+    // Update active dot
+    document.querySelectorAll('.agent-dot').forEach(dot => {
+      dot.classList.remove('active');
+    });
+    
+    const selectedDot = document.querySelector(`[data-agent-id="${agentId}"]`);
+    if (selectedDot) {
+      selectedDot.classList.add('active');
+    }
+    
+    console.log('🎯 Selected agent:', this.selectedAgent.name);
+    this.showNotification(`Selected agent: ${this.selectedAgent.name}`, 'info');
   }
 
   updateAgentDropdowns() {
@@ -643,10 +712,10 @@ class CamelotApp {
   }
 
   // External Terminal Launch
-  async launchExternalTerminal() {
-    const primary = this.agents.find(agent => agent.isPrimary);
-    if (!primary) {
-      this.showNotification('No primary agent configured. Please set up agents first.', 'error');
+  async launchExternalTerminal(agent = null) {
+    const targetAgent = agent || this.selectedAgent || this.agents.find(agent => agent.isPrimary);
+    if (!targetAgent) {
+      this.showNotification('No agent selected. Please set up agents first.', 'error');
       return;
     }
 
@@ -657,7 +726,7 @@ class CamelotApp {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          agentId: primary.id,
+          agentId: targetAgent.id,
           projectPath: null // TODO: Add project selection
         })
       });
@@ -670,32 +739,106 @@ class CamelotApp {
       }
     } catch (error) {
       console.error('❌ Failed to launch external terminal:', error);
-      this.showNotification('Failed to launch external terminal', 'error');
+      
+      // Fallback to Windows Terminal if available
+      if (this.isWindows()) {
+        this.launchWindowsTerminal(targetAgent);
+      } else {
+        this.showNotification('Failed to launch external terminal', 'error');
+      }
     }
+  }
+
+  isWindows() {
+    return navigator.platform.indexOf('Win') > -1 || navigator.userAgent.indexOf('Windows') > -1;
+  }
+
+  launchWindowsTerminal(agent) {
+    try {
+      // Construct Windows Terminal command
+      const command = `${agent.command} ${agent.defaultArgs.join(' ')}`;
+      const wtCommand = `wt.exe new-tab --title "Camelot - ${agent.name}" powershell -NoExit -Command "${command}"`;
+      
+      console.log('🪟 Attempting Windows Terminal fallback:', wtCommand);
+      
+      // Try to execute the command (this will only work in specific contexts like Electron)
+      // For web browsers, we can only show the command to the user
+      this.showWindowsTerminalFallback(wtCommand);
+      
+    } catch (error) {
+      console.error('❌ Windows Terminal fallback failed:', error);
+      this.showNotification('Terminal fallback failed. Please manually launch your terminal.', 'error');
+    }
+  }
+
+  showWindowsTerminalFallback(command) {
+    // Show a modal or notification with the command to run manually
+    const notification = document.createElement('div');
+    notification.className = 'notification notification-info windows-terminal-fallback';
+    notification.innerHTML = `
+      <div class="notification-content">
+        <div>
+          <strong>Windows Terminal Command:</strong>
+          <div class="terminal-command-copy">
+            <code>${command}</code>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText('${command.replace(/'/g, "\\'")}')">
+              📋 Copy
+            </button>
+          </div>
+          <small>Run this command in your terminal to launch ${this.selectedAgent?.name || 'the agent'}.</small>
+        </div>
+        <button class="notification-close" aria-label="Close notification">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(notification);
+    
+    // Show notification
+    setTimeout(() => notification.classList.add('show'), 10);
+    
+    // Auto-hide after 10 seconds (longer for command copying)
+    setTimeout(() => this.hideNotification(notification), 10000);
+    
+    // Close button handler
+    notification.querySelector('.notification-close').addEventListener('click', () => {
+      this.hideNotification(notification);
+    });
   }
 
   // Terminal Management
   createNewTerminal() {
-    const primary = this.agents.find(agent => agent.isPrimary);
-    if (!primary) {
-      this.showNotification('No primary agent configured. Please set up agents first.', 'error');
+    const targetAgent = this.selectedAgent || this.agents.find(agent => agent.isPrimary);
+    if (!targetAgent) {
+      this.showNotification('No agent selected. Please set up agents first.', 'error');
       return;
     }
 
     const sessionId = `term-${Date.now()}`;
+    
+    // Check if xterm.js is available, fallback to external terminal
+    if (typeof Terminal === 'undefined') {
+      console.warn('xterm.js not available, falling back to external terminal');
+      this.launchExternalTerminal(targetAgent);
+      return;
+    }
     
     // Send WebSocket message to create terminal
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({
         type: 'terminal-create',
         sessionId: sessionId,
-        agentId: primary.id,
+        agentId: targetAgent.id,
         projectPath: null // TODO: Add project selection
       }));
     }
 
     // Create terminal tab immediately for better UX
-    this.createTerminalTab(sessionId, primary, 'connecting');
+    this.createTerminalTab(sessionId, targetAgent, 'connecting');
   }
 
   createTerminalTab(sessionId, agent, status = 'connecting') {
@@ -708,14 +851,23 @@ class CamelotApp {
       emptyState.style.display = 'none';
     }
 
-    // Create tab
+    // Create tab with enhanced display
     const tab = document.createElement('div');
     tab.className = 'terminal-tab';
     tab.dataset.sessionId = sessionId;
     
+    const agentType = this.getAgentType(agent);
+    const projectInfo = 'workspace'; // TODO: Get actual project from selection
+    
     tab.innerHTML = `
-      <span class="terminal-tab-title">${agent.name}</span>
-      <span class="terminal-tab-status status-${status}"></span>
+      <div class="terminal-tab-title">
+        <div class="terminal-tab-icon ${agentType}"></div>
+        <div class="terminal-tab-info">
+          <div class="terminal-tab-name">${agent.name}</div>
+          <div class="terminal-tab-project">${projectInfo}</div>
+        </div>
+      </div>
+      <div class="terminal-tab-status status-${status}"></div>
       <button class="terminal-tab-close" aria-label="Close terminal">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
@@ -960,6 +1112,7 @@ class CamelotApp {
         this.showNotification('Primary agent updated successfully!', 'success');
         await this.loadAgents();
         this.renderAgentList();
+        this.setupAgentSelector();
       } else {
         throw new Error('Failed to set primary agent');
       }
@@ -1003,6 +1156,7 @@ class CamelotApp {
         this.showNotification('Agent deleted successfully!', 'success');
         await this.loadAgents();
         this.renderAgentList();
+        this.setupAgentSelector();
       } else {
         const error = await response.json();
         throw new Error(error.error || 'Failed to delete agent');
@@ -1110,6 +1264,7 @@ class CamelotApp {
         form.reset();
         await this.loadAgents(); // Refresh agent list
         this.renderAgentList();
+        this.setupAgentSelector();
       } else {
         const error = await response.json();
         throw new Error(error.error || `Failed to ${this.editingAgentId ? 'update' : 'create'} agent`);
@@ -1300,6 +1455,46 @@ if (!document.querySelector('#notification-styles')) {
     
     .notification-info {
       border-left: 4px solid var(--status-info);
+    }
+    
+    /* Windows Terminal Fallback */
+    .windows-terminal-fallback {
+      max-width: 500px;
+    }
+    
+    .terminal-command-copy {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin: var(--space-2) 0;
+      padding: var(--space-2);
+      background: var(--bg-secondary);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-secondary);
+    }
+    
+    .terminal-command-copy code {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--text-primary);
+      background: transparent;
+      word-break: break-all;
+    }
+    
+    .copy-btn {
+      padding: var(--space-1) var(--space-2);
+      background: var(--accent-amber);
+      color: var(--text-inverse);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: var(--text-xs);
+      cursor: pointer;
+      transition: background var(--duration-fast) var(--ease-out);
+    }
+    
+    .copy-btn:hover {
+      background: var(--accent-amber-light);
     }
   `;
   document.head.appendChild(notificationStyles);
