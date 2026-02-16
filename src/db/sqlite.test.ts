@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository } from "./sqlite.js";
+import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository } from "./sqlite.js";
 import { unlinkSync, existsSync } from "node:fs";
 
 const TEST_DB = ":memory:";
@@ -332,6 +332,286 @@ describe("SqliteAgentDefinitionRepository", () => {
         command: "duplicate",
         defaultArgs: [],
         model: null,
+      });
+    }).toThrow();
+  });
+});
+
+describe("SqliteSkillRepository", () => {
+  let database: SqliteDatabase;
+  let repo: SkillRepository;
+
+  beforeEach(() => {
+    database = new SqliteDatabase(TEST_DB);
+    database.initialize();
+    repo = new SqliteSkillRepository(database.db);
+  });
+
+  afterEach(() => {
+    database.close();
+  });
+
+  it("creates a skill", () => {
+    const skill = repo.create({
+      name: "Test Skill",
+      description: "A test skill",
+      fileName: "test-skill.md",
+      content: "# Test Skill\n\nThis is a test skill.",
+    });
+
+    expect(skill.id).toBeDefined();
+    expect(skill.name).toBe("Test Skill");
+    expect(skill.description).toBe("A test skill");
+    expect(skill.fileName).toBe("test-skill.md");
+    expect(skill.content).toBe("# Test Skill\n\nThis is a test skill.");
+    expect(skill.createdAt).toBeDefined();
+    expect(skill.updatedAt).toBeDefined();
+  });
+
+  it("finds all skills", () => {
+    repo.create({
+      name: "Skill 1",
+      description: "First skill",
+      fileName: "skill1.md",
+      content: "Content 1",
+    });
+    repo.create({
+      name: "Skill 2", 
+      description: "Second skill",
+      fileName: "skill2.md",
+      content: "Content 2",
+    });
+
+    const skills = repo.findAll();
+    expect(skills).toHaveLength(2);
+    expect(skills[0].name).toBe("Skill 1"); // Sorted by name
+    expect(skills[1].name).toBe("Skill 2");
+  });
+
+  it("finds skill by ID", () => {
+    const created = repo.create({
+      name: "Find Me",
+      description: "A findable skill",
+      fileName: "findme.md",
+      content: "Find this content",
+    });
+
+    const found = repo.findById(created.id);
+    expect(found).toEqual(created);
+  });
+
+  it("finds skill by filename", () => {
+    const created = repo.create({
+      name: "File Skill",
+      description: "A skill found by filename",
+      fileName: "unique-file.md",
+      content: "Unique content",
+    });
+
+    const found = repo.findByFileName("unique-file.md");
+    expect(found).toEqual(created);
+  });
+
+  it("returns undefined for non-existent skill", () => {
+    const notFound = repo.findById("nonexistent");
+    expect(notFound).toBeUndefined();
+  });
+
+  it("updates a skill", () => {
+    const skill = repo.create({
+      name: "Original",
+      description: "Original description",
+      fileName: "original.md",
+      content: "Original content",
+    });
+
+    const success = repo.update(skill.id, {
+      name: "Updated",
+      content: "Updated content",
+    });
+    expect(success).toBe(true);
+
+    const updated = repo.findById(skill.id);
+    expect(updated?.name).toBe("Updated");
+    expect(updated?.content).toBe("Updated content");
+    expect(updated?.description).toBe("Original description"); // Unchanged
+    expect(updated?.updatedAt).toBeDefined(); // Updated timestamp should exist
+  });
+
+  it("removes a skill", () => {
+    const skill = repo.create({
+      name: "To Delete",
+      description: "Will be deleted",
+      fileName: "delete-me.md", 
+      content: "Delete this",
+    });
+
+    const success = repo.remove(skill.id);
+    expect(success).toBe(true);
+
+    const notFound = repo.findById(skill.id);
+    expect(notFound).toBeUndefined();
+  });
+
+  it("returns false when removing non-existent skill", () => {
+    const success = repo.remove("nonexistent");
+    expect(success).toBe(false);
+  });
+
+  it("enforces unique filenames", () => {
+    repo.create({
+      name: "First",
+      description: "First skill",
+      fileName: "duplicate.md",
+      content: "First content",
+    });
+
+    expect(() => {
+      repo.create({
+        name: "Second",
+        description: "Second skill", 
+        fileName: "duplicate.md", // Duplicate filename
+        content: "Second content",
+      });
+    }).toThrow();
+  });
+});
+
+describe("SqliteToolRepository", () => {
+  let database: SqliteDatabase;
+  let repo: ToolRepository;
+
+  beforeEach(() => {
+    database = new SqliteDatabase(TEST_DB);
+    database.initialize();
+    repo = new SqliteToolRepository(database.db);
+  });
+
+  afterEach(() => {
+    database.close();
+  });
+
+  it("creates a tool", () => {
+    const tool = repo.create({
+      name: "Test Tool",
+      description: "A test tool",
+      fileName: "test-tool.md",
+      content: "# Test Tool\n\nThis is a test tool.",
+    });
+
+    expect(tool.id).toBeDefined();
+    expect(tool.name).toBe("Test Tool");
+    expect(tool.description).toBe("A test tool");
+    expect(tool.fileName).toBe("test-tool.md");
+    expect(tool.content).toBe("# Test Tool\n\nThis is a test tool.");
+    expect(tool.createdAt).toBeDefined();
+    expect(tool.updatedAt).toBeDefined();
+  });
+
+  it("finds all tools", () => {
+    repo.create({
+      name: "Tool 1",
+      description: "First tool",
+      fileName: "tool1.md",
+      content: "Content 1",
+    });
+    repo.create({
+      name: "Tool 2",
+      description: "Second tool", 
+      fileName: "tool2.md",
+      content: "Content 2",
+    });
+
+    const tools = repo.findAll();
+    expect(tools).toHaveLength(2);
+    expect(tools[0].name).toBe("Tool 1"); // Sorted by name
+    expect(tools[1].name).toBe("Tool 2");
+  });
+
+  it("finds tool by ID", () => {
+    const created = repo.create({
+      name: "Find Me",
+      description: "A findable tool",
+      fileName: "findme.md",
+      content: "Find this content",
+    });
+
+    const found = repo.findById(created.id);
+    expect(found).toEqual(created);
+  });
+
+  it("finds tool by filename", () => {
+    const created = repo.create({
+      name: "File Tool",
+      description: "A tool found by filename",
+      fileName: "unique-file.md",
+      content: "Unique content",
+    });
+
+    const found = repo.findByFileName("unique-file.md");
+    expect(found).toEqual(created);
+  });
+
+  it("returns undefined for non-existent tool", () => {
+    const notFound = repo.findById("nonexistent");
+    expect(notFound).toBeUndefined();
+  });
+
+  it("updates a tool", () => {
+    const tool = repo.create({
+      name: "Original",
+      description: "Original description",
+      fileName: "original.md",
+      content: "Original content",
+    });
+
+    const success = repo.update(tool.id, {
+      name: "Updated",
+      content: "Updated content",
+    });
+    expect(success).toBe(true);
+
+    const updated = repo.findById(tool.id);
+    expect(updated?.name).toBe("Updated");
+    expect(updated?.content).toBe("Updated content");
+    expect(updated?.description).toBe("Original description"); // Unchanged
+    expect(updated?.updatedAt).toBeDefined(); // Updated timestamp should exist
+  });
+
+  it("removes a tool", () => {
+    const tool = repo.create({
+      name: "To Delete",
+      description: "Will be deleted",
+      fileName: "delete-me.md",
+      content: "Delete this",
+    });
+
+    const success = repo.remove(tool.id);
+    expect(success).toBe(true);
+
+    const notFound = repo.findById(tool.id);
+    expect(notFound).toBeUndefined();
+  });
+
+  it("returns false when removing non-existent tool", () => {
+    const success = repo.remove("nonexistent");
+    expect(success).toBe(false);
+  });
+
+  it("enforces unique filenames", () => {
+    repo.create({
+      name: "First",
+      description: "First tool",
+      fileName: "duplicate.md",
+      content: "First content",
+    });
+
+    expect(() => {
+      repo.create({
+        name: "Second",
+        description: "Second tool",
+        fileName: "duplicate.md", // Duplicate filename
+        content: "Second content",
       });
     }).toThrow();
   });

@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, TicketStage } from "../db/types.js";
+import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, TicketStage } from "../db/types.js";
 import type { Logger } from "../logger.js";
 
 export interface RoutesDeps {
@@ -7,6 +7,8 @@ export interface RoutesDeps {
   readonly tickets: TicketRepository;
   readonly agentRuns: AgentRunRepository;
   readonly agentDefinitions: AgentDefinitionRepository;
+  readonly skills: SkillRepository;
+  readonly tools: ToolRepository;
   readonly logger: Logger;
 }
 
@@ -178,6 +180,154 @@ export function createApiRouter(deps: RoutesDeps): Router {
       return;
     }
     
+    res.status(204).end();
+  });
+
+  // Skills
+  router.get("/skills", (_req: Request, res: Response) => {
+    const skills = deps.skills.findAll();
+    res.json(skills);
+  });
+
+  router.post("/skills", (req: Request, res: Response) => {
+    const { name, description, fileName, content } = req.body as { 
+      name?: string; 
+      description?: string;
+      fileName?: string; 
+      content?: string; 
+    };
+    
+    if (!name || !fileName || !content) {
+      res.status(400).json({ error: "name, fileName, and content are required" });
+      return;
+    }
+    
+    try {
+      const skill = deps.skills.create({
+        name,
+        description: description || '',
+        fileName,
+        content,
+      });
+      res.status(201).json(skill);
+    } catch (error) {
+      res.status(400).json({ error: "Skill with this filename already exists or invalid data" });
+    }
+  });
+
+  router.get("/skills/:id", (req: Request, res: Response) => {
+    const skill = deps.skills.findById(req.params.id);
+    if (!skill) {
+      res.status(404).json({ error: "Skill not found" });
+      return;
+    }
+    res.json(skill);
+  });
+
+  router.put("/skills/:id", (req: Request, res: Response) => {
+    const { name, description, fileName, content } = req.body as Partial<{
+      name: string;
+      description: string;
+      fileName: string;
+      content: string;
+    }>;
+
+    const success = deps.skills.update(req.params.id, {
+      name,
+      description,
+      fileName,
+      content,
+    });
+    
+    if (!success) {
+      res.status(404).json({ error: "Skill not found" });
+      return;
+    }
+
+    const updated = deps.skills.findById(req.params.id);
+    res.json(updated);
+  });
+
+  router.delete("/skills/:id", (req: Request, res: Response) => {
+    const removed = deps.skills.remove(req.params.id);
+    if (!removed) {
+      res.status(404).json({ error: "Skill not found" });
+      return;
+    }
+    res.status(204).end();
+  });
+
+  // Tools
+  router.get("/tools", (_req: Request, res: Response) => {
+    const tools = deps.tools.findAll();
+    res.json(tools);
+  });
+
+  router.post("/tools", (req: Request, res: Response) => {
+    const { name, description, fileName, content } = req.body as { 
+      name?: string; 
+      description?: string;
+      fileName?: string; 
+      content?: string; 
+    };
+    
+    if (!name || !fileName || !content) {
+      res.status(400).json({ error: "name, fileName, and content are required" });
+      return;
+    }
+    
+    try {
+      const tool = deps.tools.create({
+        name,
+        description: description || '',
+        fileName,
+        content,
+      });
+      res.status(201).json(tool);
+    } catch (error) {
+      res.status(400).json({ error: "Tool with this filename already exists or invalid data" });
+    }
+  });
+
+  router.get("/tools/:id", (req: Request, res: Response) => {
+    const tool = deps.tools.findById(req.params.id);
+    if (!tool) {
+      res.status(404).json({ error: "Tool not found" });
+      return;
+    }
+    res.json(tool);
+  });
+
+  router.put("/tools/:id", (req: Request, res: Response) => {
+    const { name, description, fileName, content } = req.body as Partial<{
+      name: string;
+      description: string;
+      fileName: string;
+      content: string;
+    }>;
+
+    const success = deps.tools.update(req.params.id, {
+      name,
+      description,
+      fileName,
+      content,
+    });
+    
+    if (!success) {
+      res.status(404).json({ error: "Tool not found" });
+      return;
+    }
+
+    const updated = deps.tools.findById(req.params.id);
+    res.json(updated);
+  });
+
+  router.delete("/tools/:id", (req: Request, res: Response) => {
+    const removed = deps.tools.remove(req.params.id);
+    if (!removed) {
+      res.status(404).json({ error: "Tool not found" });
+      return;
+    }
     res.status(204).end();
   });
 

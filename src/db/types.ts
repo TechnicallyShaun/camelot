@@ -80,3 +80,43 @@ export interface AgentDefinitionRepository {
   setPrimary(id: string): boolean;
   remove(id: string): boolean;
 }
+
+export interface Skill {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly fileName: string;
+  readonly content: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface Tool {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly fileName: string;
+  readonly content: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface SkillRepository {
+  create(skill: Omit<Skill, 'id' | 'createdAt' | 'updatedAt'>): Skill;
+  findAll(): Skill[];
+  findById(id: string): Skill | undefined;
+  findByFileName(fileName: string): Skill | undefined;
+  update(id: string, updates: Partial<Omit<Skill, 'id' | 'createdAt'>>): boolean;
+  remove(id: string): boolean;
+  syncFromFileSystem(skillsPath: string): Promise<void>;
+}
+
+export interface ToolRepository {
+  create(tool: Omit<Tool, 'id' | 'createdAt' | 'updatedAt'>): Tool;
+  findAll(): Tool[];
+  findById(id: string): Tool | undefined;
+  findByFileName(fileName: string): Tool | undefined;
+  update(id: string, updates: Partial<Omit<Tool, 'id' | 'createdAt'>>): boolean;
+  remove(id: string): boolean;
+  syncFromFileSystem(toolsPath: string): Promise<void>;
+}

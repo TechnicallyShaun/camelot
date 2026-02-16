@@ -7,10 +7,14 @@ import type {
   TicketStage,
   AgentRun,
   AgentDefinition,
+  Skill,
+  Tool,
   ProjectRepository,
   TicketRepository,
   AgentRunRepository,
   AgentDefinitionRepository,
+  SkillRepository,
+  ToolRepository,
 } from "./types.js";
 
 export class SqliteDatabase implements Database {
@@ -60,6 +64,26 @@ export class SqliteDatabase implements Database {
         default_args TEXT NOT NULL DEFAULT '[]',
         model TEXT,
         is_primary INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS skills (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        file_name TEXT NOT NULL UNIQUE,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS tools (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        file_name TEXT NOT NULL UNIQUE,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
     `);
 
@@ -289,6 +313,182 @@ export class SqliteAgentDefinitionRepository implements AgentDefinitionRepositor
       defaultArgs: JSON.parse(row.default_args as string) as string[],
       model: row.model as string | null,
       isPrimary: Boolean(row.is_primary),
+    };
+  }
+}
+
+export class SqliteSkillRepository implements SkillRepository {
+  constructor(private readonly db: BetterSqlite3.Database) {}
+
+  create(skill: Omit<Skill, 'id' | 'createdAt' | 'updatedAt'>): Skill {
+    const id = randomUUID();
+    const stmt = this.db.prepare(`
+      INSERT INTO skills (id, name, description, file_name, content) 
+      VALUES (?, ?, ?, ?, ?) 
+      RETURNING *
+    `);
+    return this.mapSkill(
+      stmt.get(id, skill.name, skill.description, skill.fileName, skill.content) as Record<string, unknown>
+    );
+  }
+
+  findAll(): Skill[] {
+    const rows = this.db.prepare("SELECT * FROM skills ORDER BY name ASC").all();
+    return rows.map((r) => this.mapSkill(r as Record<string, unknown>));
+  }
+
+  findById(id: string): Skill | undefined {
+    const row = this.db.prepare("SELECT * FROM skills WHERE id = ?").get(id);
+    return row ? this.mapSkill(row as Record<string, unknown>) : undefined;
+  }
+
+  findByFileName(fileName: string): Skill | undefined {
+    const row = this.db.prepare("SELECT * FROM skills WHERE file_name = ?").get(fileName);
+    return row ? this.mapSkill(row as Record<string, unknown>) : undefined;
+  }
+
+  update(id: string, updates: Partial<Omit<Skill, 'id' | 'createdAt'>>): boolean {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+
+    if (updates.name !== undefined) {
+      fields.push("name = ?");
+      values.push(updates.name);
+    }
+
+    if (updates.description !== undefined) {
+      fields.push("description = ?");
+      values.push(updates.description);
+    }
+
+    if (updates.fileName !== undefined) {
+      fields.push("file_name = ?");
+      values.push(updates.fileName);
+    }
+
+    if (updates.content !== undefined) {
+      fields.push("content = ?");
+      values.push(updates.content);
+    }
+
+    if (fields.length === 0) return false;
+
+    fields.push("updated_at = datetime('now')");
+    values.push(id);
+    
+    const sql = `UPDATE skills SET ${fields.join(", ")} WHERE id = ?`;
+    const result = this.db.prepare(sql).run(...values);
+    return result.changes > 0;
+  }
+
+  remove(id: string): boolean {
+    const result = this.db.prepare("DELETE FROM skills WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
+  async syncFromFileSystem(skillsPath: string): Promise<void> {
+    // TODO: Implement file system synchronization
+    // This would scan the skills folder and sync with database
+    console.log(`TODO: Sync skills from ${skillsPath}`);
+  }
+
+  private mapSkill(row: Record<string, unknown>): Skill {
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      description: row.description as string,
+      fileName: row.file_name as string,
+      content: row.content as string,
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    };
+  }
+}
+
+export class SqliteToolRepository implements ToolRepository {
+  constructor(private readonly db: BetterSqlite3.Database) {}
+
+  create(tool: Omit<Tool, 'id' | 'createdAt' | 'updatedAt'>): Tool {
+    const id = randomUUID();
+    const stmt = this.db.prepare(`
+      INSERT INTO tools (id, name, description, file_name, content) 
+      VALUES (?, ?, ?, ?, ?) 
+      RETURNING *
+    `);
+    return this.mapTool(
+      stmt.get(id, tool.name, tool.description, tool.fileName, tool.content) as Record<string, unknown>
+    );
+  }
+
+  findAll(): Tool[] {
+    const rows = this.db.prepare("SELECT * FROM tools ORDER BY name ASC").all();
+    return rows.map((r) => this.mapTool(r as Record<string, unknown>));
+  }
+
+  findById(id: string): Tool | undefined {
+    const row = this.db.prepare("SELECT * FROM tools WHERE id = ?").get(id);
+    return row ? this.mapTool(row as Record<string, unknown>) : undefined;
+  }
+
+  findByFileName(fileName: string): Tool | undefined {
+    const row = this.db.prepare("SELECT * FROM tools WHERE file_name = ?").get(fileName);
+    return row ? this.mapTool(row as Record<string, unknown>) : undefined;
+  }
+
+  update(id: string, updates: Partial<Omit<Tool, 'id' | 'createdAt'>>): boolean {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+
+    if (updates.name !== undefined) {
+      fields.push("name = ?");
+      values.push(updates.name);
+    }
+
+    if (updates.description !== undefined) {
+      fields.push("description = ?");
+      values.push(updates.description);
+    }
+
+    if (updates.fileName !== undefined) {
+      fields.push("file_name = ?");
+      values.push(updates.fileName);
+    }
+
+    if (updates.content !== undefined) {
+      fields.push("content = ?");
+      values.push(updates.content);
+    }
+
+    if (fields.length === 0) return false;
+
+    fields.push("updated_at = datetime('now')");
+    values.push(id);
+    
+    const sql = `UPDATE tools SET ${fields.join(", ")} WHERE id = ?`;
+    const result = this.db.prepare(sql).run(...values);
+    return result.changes > 0;
+  }
+
+  remove(id: string): boolean {
+    const result = this.db.prepare("DELETE FROM tools WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
+  async syncFromFileSystem(toolsPath: string): Promise<void> {
+    // TODO: Implement file system synchronization
+    // This would scan the tools folder and sync with database
+    console.log(`TODO: Sync tools from ${toolsPath}`);
+  }
+
+  private mapTool(row: Record<string, unknown>): Tool {
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      description: row.description as string,
+      fileName: row.file_name as string,
+      content: row.content as string,
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
     };
   }
 }
