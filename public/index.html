@@ -10,6 +10,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   
+  <!-- xterm.js CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
+  
   <!-- Styles -->
   <link rel="stylesheet" href="/css/reset.css">
   <link rel="stylesheet" href="/css/variables.css">
@@ -19,229 +22,187 @@
 </head>
 <body>
   <div id="app">
-    <!-- Sidebar Navigation -->
+    <!-- Thin Sidebar (50px wide, icons only) -->
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div class="logo">
-          <span class="logo-icon">🏰</span>
-          <span class="logo-text">Camelot</span>
-        </div>
-        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M3 12h18m-9-9l9 9l-9 9"/>
-          </svg>
-        </button>
+      <div class="sidebar-logo">
+        <span class="logo-icon">🏰</span>
       </div>
       
       <nav class="sidebar-nav">
         <ul class="nav-list">
           <li class="nav-item active">
-            <a href="#" class="nav-link" data-section="dashboard">
-              <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <a href="#" class="nav-link" data-section="dashboard" title="Dashboard">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <rect x="3" y="3" width="7" height="7"/>
                 <rect x="14" y="3" width="7" height="7"/>
                 <rect x="14" y="14" width="7" height="7"/>
                 <rect x="3" y="14" width="7" height="7"/>
               </svg>
-              <span class="nav-text">Dashboard</span>
             </a>
           </li>
           <li class="nav-item">
-            <a href="#" class="nav-link" data-section="tickets">
-              <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <a href="#" class="nav-link" data-section="tickets" title="Tickets">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14,2 14,8 20,8"/>
                 <line x1="16" y1="13" x2="8" y2="13"/>
                 <line x1="16" y1="17" x2="8" y2="17"/>
                 <polyline points="10,9 9,9 8,9"/>
               </svg>
-              <span class="nav-text">Tickets</span>
             </a>
           </li>
           <li class="nav-item">
-            <a href="#" class="nav-link" data-section="projects">
-              <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <a href="#" class="nav-link" data-section="projects" title="Projects">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z"/>
                 <path d="M8 21v-4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4"/>
               </svg>
-              <span class="nav-text">Projects</span>
             </a>
           </li>
           <li class="nav-item">
-            <a href="#" class="nav-link" data-section="skills">
-              <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <a href="#" class="nav-link" data-section="skills" title="⚔️ Skills">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
               </svg>
-              <span class="nav-text">⚔️ Skills</span>
             </a>
           </li>
           <li class="nav-item">
-            <a href="#" class="nav-link" data-section="tools">
-              <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <a href="#" class="nav-link" data-section="tools" title="🔧 Tools">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <circle cx="12" cy="12" r="3"/>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
-              <span class="nav-text">🔧 Tools</span>
             </a>
           </li>
           <li class="nav-item">
-            <a href="#" class="nav-link" data-section="agents">
-              <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <a href="#" class="nav-link" data-section="agents" title="Agents">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
                 <path d="M12 6v6l4 2"/>
               </svg>
-              <span class="nav-text">Agents</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="#" class="nav-link" data-section="terminal">
-              <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                <line x1="8" y1="21" x2="16" y2="21"/>
-                <line x1="12" y1="17" x2="12" y2="21"/>
-              </svg>
-              <span class="nav-text">Terminal</span>
             </a>
           </li>
         </ul>
       </nav>
-      
-      <div class="sidebar-footer">
-        <button class="btn btn-secondary btn-sm" id="settingsBtn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="m12 1l3.09 3.26L22 4l-1.74 6.09L22 13l-6.91-.74L12 23l-3.09-3.26L2 20l1.74-6.09L2 11l6.91.74L12 1z"/>
-          </svg>
-          <span>Settings</span>
-        </button>
-      </div>
     </aside>
 
-    <!-- Main Content Area -->
+    <!-- Main Content Area (full width after sidebar) -->
     <main class="main-content">
-      <!-- Header -->
+      <!-- Thin Header -->
       <header class="header">
-        <div class="header-left">
-          <h1 class="page-title">Dashboard</h1>
-          <div class="breadcrumb">
-            <span class="breadcrumb-item">Home</span>
-            <span class="breadcrumb-separator">/</span>
-            <span class="breadcrumb-item active">Dashboard</span>
-          </div>
-        </div>
-        
-        <div class="header-right">
-          <button class="btn btn-primary" id="newTicketBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            <span>New Ticket</span>
-          </button>
-        </div>
+        <h1 class="page-title">Dashboard</h1>
       </header>
 
       <!-- Content Sections -->
       <div class="content">
         <!-- Dashboard Section -->
         <section id="dashboard-section" class="section active">
-          <div class="dashboard-grid">
-            <!-- Stats Cards -->
-            <div class="stats-row">
-              <div class="card stat-card">
-                <div class="stat-header">
-                  <h3 class="stat-title">Active Tickets</h3>
-                  <svg class="stat-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14,2 14,8 20,8"/>
+          
+          <!-- Tabbed Terminal area - TOP -->
+          <div class="terminal-container">
+            <div class="terminal-header">
+              <div class="terminal-tabs" id="terminalTabs">
+                <button class="btn btn-sm btn-secondary" id="newTerminalBtn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
                   </svg>
-                </div>
-                <div class="stat-value">12</div>
-                <div class="stat-change positive">+2 this week</div>
+                  New Terminal
+                </button>
               </div>
-              
-              <div class="card stat-card">
-                <div class="stat-header">
-                  <h3 class="stat-title">Running Agents</h3>
-                  <svg class="stat-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="m12 1l3.09 3.26L22 4l-1.74 6.09L22 13l-6.91-.74L12 23l-3.09-3.26L2 20l1.74-6.09L2 11l6.91.74L12 1z"/>
-                  </svg>
+              <div class="terminal-controls">
+                <div class="agent-selector" id="agentSelector">
+                  <div class="agent-selector-label">Agent:</div>
+                  <div class="agent-dots" id="agentDots">
+                    <!-- Agent selector dots will be populated dynamically -->
+                  </div>
                 </div>
-                <div class="stat-value">3</div>
-                <div class="stat-change">2 Copilot, 1 Claude</div>
-              </div>
-              
-              <div class="card stat-card">
-                <div class="stat-header">
-                  <h3 class="stat-title">Completed Today</h3>
-                  <svg class="stat-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                    <polyline points="22,4 12,14.01 9,11.01"/>
-                  </svg>
-                </div>
-                <div class="stat-value">8</div>
-                <div class="stat-change positive">+3 vs yesterday</div>
               </div>
             </div>
+            <div class="terminal-content" id="terminalContent">
+              <div class="terminal-empty">
+                <div class="terminal-empty-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                  </svg>
+                </div>
+                <h3>No Active Terminals</h3>
+                <p>Click "New Terminal" to start an AI agent session</p>
+              </div>
+            </div>
+          </div>
 
-            <!-- Recent Activity -->
+          <!-- New ticket input - inline, not modal -->
+          <div class="new-ticket-container">
+            <div class="new-ticket-form">
+              <input type="text" id="newTicketInput" class="new-ticket-input" placeholder="New ticket..." />
+              <button id="newTicketAddBtn" class="new-ticket-btn" title="Add ticket">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Ticket list - from real API -->
+          <div class="tickets-section">
+            <div class="tickets-list" id="ticketsList">
+              <div class="loading-spinner" id="ticketsLoading">
+                <div class="spinner"></div>
+                <p>Loading tickets...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Activity at bottom - from real API -->
+          <div class="activity-container">
             <div class="card activity-card">
               <div class="card-header">
                 <h2 class="card-title">Recent Activity</h2>
-                <button class="btn btn-ghost btn-sm">View All</button>
               </div>
-              <div class="activity-list">
-                <div class="activity-item">
-                  <div class="activity-icon success">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <polyline points="20,6 9,17 4,12"/>
-                    </svg>
-                  </div>
-                  <div class="activity-content">
-                    <div class="activity-title">Ticket #123 completed</div>
-                    <div class="activity-meta">Agent: Copilot CLI • 2 minutes ago</div>
-                  </div>
+              <div class="activity-list" id="activityList">
+                <div class="loading-spinner" id="activityLoading">
+                  <div class="spinner"></div>
+                  <p>Loading activity...</p>
                 </div>
-                
-                <div class="activity-item">
-                  <div class="activity-icon info">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="12" y1="16" x2="12" y2="12"/>
-                      <line x1="12" y1="8" x2="12.01" y2="8"/>
-                    </svg>
-                  </div>
-                  <div class="activity-content">
-                    <div class="activity-title">New ticket created: "Fix login bug"</div>
-                    <div class="activity-meta">Created by user • 15 minutes ago</div>
-                  </div>
-                </div>
-                
-                <div class="activity-item">
-                  <div class="activity-icon warning">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <path d="M12 9v4"/>
-                      <path d="M12 17h.01"/>
-                      <path d="M3 3l18 18"/>
-                    </svg>
-                  </div>
-                  <div class="activity-content">
-                    <div class="activity-title">Agent timeout on ticket #119</div>
-                    <div class="activity-meta">Agent: Claude Code • 1 hour ago</div>
-                  </div>
-                </div>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Tickets Section -->
+        <section id="tickets-section" class="section">
+          <div class="section-header">
+            <h2 class="section-title">All Tickets</h2>
+          </div>
+          
+          <div class="new-ticket-container">
+            <div class="new-ticket-form">
+              <input type="text" id="ticketsPageInput" class="new-ticket-input" placeholder="New ticket..." />
+              <button id="ticketsPageAddBtn" class="new-ticket-btn" title="Add ticket">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="tickets-container">
+            <div class="tickets-list" id="allTicketsList">
+              <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading tickets...</p>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- Other sections will be implemented in subsequent issues -->
-        <section id="tickets-section" class="section">
-          <h2>Tickets Section</h2>
-          <p>Ticket management coming soon...</p>
-        </section>
-
+        <!-- Projects Section -->
         <section id="projects-section" class="section">
           <div class="section-header">
             <h2 class="section-title">Projects</h2>
@@ -256,7 +217,10 @@
           
           <div class="projects-container">
             <div class="projects-grid" id="projectsGrid">
-              <!-- Projects will be loaded here -->
+              <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading projects...</p>
+              </div>
             </div>
             
             <div class="projects-empty" id="projectsEmpty" style="display: none;">
@@ -279,6 +243,7 @@
           </div>
         </section>
 
+        <!-- Skills Section -->
         <section id="skills-section" class="section">
           <div class="section-header">
             <h2 class="section-title">⚔️ Skills</h2>
@@ -293,7 +258,10 @@
           
           <div class="skills-container">
             <div class="skills-grid" id="skillsGrid">
-              <!-- Skills will be loaded here -->
+              <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading skills...</p>
+              </div>
             </div>
             
             <div class="skills-empty" id="skillsEmpty" style="display: none;">
@@ -315,6 +283,7 @@
           </div>
         </section>
 
+        <!-- Tools Section -->
         <section id="tools-section" class="section">
           <div class="section-header">
             <h2 class="section-title">🔧 Tools</h2>
@@ -329,7 +298,10 @@
           
           <div class="tools-container">
             <div class="tools-grid" id="toolsGrid">
-              <!-- Tools will be loaded here -->
+              <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading tools...</p>
+              </div>
             </div>
             
             <div class="tools-empty" id="toolsEmpty" style="display: none;">
@@ -352,55 +324,24 @@
           </div>
         </section>
 
+        <!-- Agents Section -->
         <section id="agents-section" class="section">
-          <h2>Agents Section</h2>
-          <p>Agent management coming soon...</p>
-        </section>
-
-        <section id="terminal-section" class="section">
-          <div class="terminal-container">
-            <div class="terminal-header">
-              <div class="terminal-tabs" id="terminalTabs">
-                <button class="btn btn-sm btn-secondary" id="newTerminalBtn">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                  New Terminal
-                </button>
-              </div>
-              <div class="terminal-controls">
-                <div class="agent-selector" id="agentSelector">
-                  <div class="agent-selector-label">Agent:</div>
-                  <div class="agent-dots" id="agentDots">
-                    <!-- Agent selector dots will be populated dynamically -->
-                  </div>
-                </div>
-                <button class="btn btn-sm btn-secondary" id="terminalLauncherBtn" title="Launch external terminal">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <rect x="2" y="4" width="20" height="16" rx="2"/>
-                    <path d="m10 12l2 2l4-4"/>
-                  </svg>
-                </button>
-                <button class="btn btn-sm btn-secondary" id="terminalSettingsBtn">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="m12 1l3.09 3.26L22 4l-1.74 6.09L22 13l-6.91-.74L12 23l-3.09-3.26L2 20l1.74-6.09L2 11l6.91.74L12 1z"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div class="terminal-content" id="terminalContent">
-              <div class="terminal-empty">
-                <div class="terminal-empty-icon">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                    <line x1="8" y1="21" x2="16" y2="21"/>
-                    <line x1="12" y1="17" x2="12" y2="21"/>
-                  </svg>
-                </div>
-                <h3>No Active Terminals</h3>
-                <p>Click "New Terminal" to start an AI agent session</p>
+          <div class="section-header">
+            <h2 class="section-title">Agents</h2>
+            <button class="btn btn-primary" id="newAgentBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              <span>New Agent</span>
+            </button>
+          </div>
+          
+          <div class="agents-container">
+            <div class="agents-list" id="agentsList">
+              <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading agents...</p>
               </div>
             </div>
           </div>
@@ -408,57 +349,7 @@
       </div>
     </main>
 
-    <!-- Right Panel (Tickets) -->
-    <aside class="right-panel" id="rightPanel">
-      <div class="panel-header">
-        <h2 class="panel-title">Active Tickets</h2>
-        <button class="panel-toggle" id="rightPanelToggle" aria-label="Toggle ticket panel">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M15 18l-6-6l6-6"/>
-          </svg>
-        </button>
-      </div>
-      
-      <div class="ticket-list">
-        <div class="ticket-item">
-          <div class="ticket-header">
-            <span class="ticket-id">#123</span>
-            <span class="ticket-status status-in-progress">In Progress</span>
-          </div>
-          <h3 class="ticket-title">Implement user authentication</h3>
-          <div class="ticket-meta">
-            <span class="ticket-agent">Agent: Copilot CLI</span>
-            <span class="ticket-time">Started 2h ago</span>
-          </div>
-        </div>
-
-        <div class="ticket-item">
-          <div class="ticket-header">
-            <span class="ticket-id">#124</span>
-            <span class="ticket-status status-pending">Pending</span>
-          </div>
-          <h3 class="ticket-title">Fix responsive layout bug</h3>
-          <div class="ticket-meta">
-            <span class="ticket-priority">Priority: High</span>
-            <span class="ticket-time">Created 30m ago</span>
-          </div>
-        </div>
-
-        <div class="ticket-item">
-          <div class="ticket-header">
-            <span class="ticket-id">#125</span>
-            <span class="ticket-status status-completed">Completed</span>
-          </div>
-          <h3 class="ticket-title">Update dependencies</h3>
-          <div class="ticket-meta">
-            <span class="ticket-agent">Agent: Claude Code</span>
-            <span class="ticket-time">Completed 1h ago</span>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Bottom Panel (Logs) -->
+    <!-- Bottom panel: System Logs | Terminal Output | Agent Status -->
     <div class="bottom-panel" id="bottomPanel">
       <div class="panel-header">
         <div class="panel-tabs">
@@ -475,51 +366,26 @@
       
       <div class="panel-content">
         <div class="tab-panel active" id="logs-panel">
-          <div class="log-entries">
+          <div class="log-entries" id="logEntries">
             <div class="log-entry info">
-              <span class="log-timestamp">14:32:15</span>
+              <span class="log-timestamp">Starting up...</span>
               <span class="log-level">INFO</span>
-              <span class="log-message">Server started on port 1187</span>
-            </div>
-            <div class="log-entry success">
-              <span class="log-timestamp">14:32:20</span>
-              <span class="log-level">SUCCESS</span>
-              <span class="log-message">WebSocket connection established</span>
-            </div>
-            <div class="log-entry warning">
-              <span class="log-timestamp">14:35:45</span>
-              <span class="log-level">WARN</span>
-              <span class="log-message">Agent timeout detected for ticket #119</span>
+              <span class="log-message">Camelot UI initialized</span>
             </div>
           </div>
         </div>
         
         <div class="tab-panel" id="terminal-panel">
-          <div class="terminal-output">
-            <div class="terminal-line">
-              <span class="terminal-prompt">$</span>
-              <span class="terminal-command">npm start</span>
-            </div>
-            <div class="terminal-line">🏰 Camelot server running on http://localhost:1187</div>
+          <div class="terminal-output" id="terminalOutput">
+            <div class="terminal-line">No active terminal sessions</div>
           </div>
         </div>
         
         <div class="tab-panel" id="agents-panel">
-          <div class="agent-status-list">
-            <div class="agent-status">
-              <span class="agent-name">Copilot CLI #1</span>
-              <span class="agent-state running">Running</span>
-              <span class="agent-task">Working on ticket #123</span>
-            </div>
-            <div class="agent-status">
-              <span class="agent-name">Copilot CLI #2</span>
-              <span class="agent-state running">Running</span>
-              <span class="agent-task">Working on ticket #126</span>
-            </div>
-            <div class="agent-status">
-              <span class="agent-name">Claude Code #1</span>
-              <span class="agent-state idle">Idle</span>
-              <span class="agent-task">Waiting for assignment</span>
+          <div class="agent-status-list" id="agentStatusList">
+            <div class="loading-spinner">
+              <div class="spinner"></div>
+              <p>Loading agent status...</p>
             </div>
           </div>
         </div>
@@ -529,138 +395,6 @@
 
   <!-- Modal Overlay -->
   <div class="modal-overlay" id="modalOverlay"></div>
-
-  <!-- New Ticket Modal -->
-  <div class="modal" id="newTicketModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title">Create New Ticket</h2>
-        <button class="modal-close" id="modalClose" aria-label="Close modal">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
-      
-      <form class="modal-form" id="ticketForm">
-        <div class="form-group">
-          <label class="form-label" for="ticketTitle">Title</label>
-          <input class="form-input" type="text" id="ticketTitle" placeholder="Enter ticket title..." required>
-        </div>
-        
-        <div class="form-group">
-          <label class="form-label" for="ticketDescription">Description</label>
-          <textarea class="form-input" id="ticketDescription" rows="4" placeholder="Describe the task or issue..."></textarea>
-        </div>
-        
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="ticketPriority">Priority</label>
-            <select class="form-input" id="ticketPriority">
-              <option value="low">Low</option>
-              <option value="medium" selected>Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="ticketAgent">Preferred Agent</label>
-            <select class="form-input" id="ticketAgent">
-              <option value="auto">Auto-assign</option>
-              <option value="copilot">Copilot CLI</option>
-              <option value="claude">Claude Code</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" id="cancelTicketBtn">Cancel</button>
-          <button type="submit" class="btn btn-primary">Create Ticket</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Agent Settings Modal -->
-  <div class="modal" id="agentSettingsModal">
-    <div class="modal-content modal-wide">
-      <div class="modal-header">
-        <h2 class="modal-title">Agent Configuration</h2>
-        <button class="modal-close" aria-label="Close modal">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
-      
-      <div class="modal-body">
-        <div class="agent-list" id="agentList">
-          <!-- Agent configurations will be loaded here -->
-        </div>
-        
-        <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" id="addAgentBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Add Agent
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Add/Edit Agent Modal -->
-  <div class="modal" id="editAgentModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title" id="editAgentTitle">Add Agent</h2>
-        <button class="modal-close" aria-label="Close modal">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
-      
-      <form class="modal-form" id="agentForm">
-        <div class="form-group">
-          <label class="form-label" for="agentId">ID</label>
-          <input class="form-input" type="text" id="agentId" placeholder="e.g., copilot, claude" required>
-        </div>
-        
-        <div class="form-group">
-          <label class="form-label" for="agentName">Display Name</label>
-          <input class="form-input" type="text" id="agentName" placeholder="e.g., Copilot CLI" required>
-        </div>
-        
-        <div class="form-group">
-          <label class="form-label" for="agentCommand">Command</label>
-          <input class="form-input" type="text" id="agentCommand" placeholder="e.g., copilot, claude" required>
-        </div>
-        
-        <div class="form-group">
-          <label class="form-label" for="agentArgs">Default Arguments</label>
-          <input class="form-input" type="text" id="agentArgs" placeholder="e.g., -i --yolo --no-ask-user">
-          <small class="form-help">Space-separated arguments</small>
-        </div>
-        
-        <div class="form-group">
-          <label class="form-label" for="agentModel">Model (Optional)</label>
-          <input class="form-input" type="text" id="agentModel" placeholder="e.g., gpt-4, claude-3">
-        </div>
-        
-        <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" id="cancelAgentBtn">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="saveAgentBtn">Save Agent</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
   <!-- New Project Modal -->
   <div class="modal" id="newProjectModal">
@@ -785,10 +519,57 @@
     </div>
   </div>
 
+  <!-- New/Edit Agent Modal -->
+  <div class="modal" id="agentModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="agentModalTitle">Create New Agent</h2>
+        <button class="modal-close" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      
+      <form class="modal-form" id="agentForm">
+        <div class="form-group">
+          <label class="form-label" for="agentId">ID</label>
+          <input class="form-input" type="text" id="agentId" placeholder="e.g., copilot, claude" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="agentName">Display Name</label>
+          <input class="form-input" type="text" id="agentName" placeholder="e.g., Copilot CLI" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="agentCommand">Command</label>
+          <input class="form-input" type="text" id="agentCommand" placeholder="e.g., copilot, claude" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="agentArgs">Default Arguments</label>
+          <input class="form-input" type="text" id="agentArgs" placeholder="e.g., -i --yolo --no-ask-user">
+          <small class="form-help">Space-separated arguments</small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="agentModel">Model (Optional)</label>
+          <input class="form-input" type="text" id="agentModel" placeholder="e.g., gpt-4, claude-3">
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelAgentBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveAgentBtn">Create Agent</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Scripts -->
-  <script src="/node_modules/@xterm/xterm/lib/xterm.js"></script>
-  <script src="/node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
-  <link rel="stylesheet" href="/node_modules/@xterm/xterm/css/xterm.css">
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>
