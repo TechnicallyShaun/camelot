@@ -13,6 +13,11 @@ export interface RoutesDeps {
 export function createApiRouter(deps: RoutesDeps): Router {
   const router = Router();
 
+  // Health check endpoint
+  router.get("/health", (_req: Request, res: Response) => {
+    res.json({ status: "ok" });
+  });
+
   // Projects
   router.get("/projects", (_req: Request, res: Response) => {
     const projects = deps.projects.findAll();
