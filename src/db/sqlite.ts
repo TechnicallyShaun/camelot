@@ -261,6 +261,10 @@ export class SqliteAgentDefinitionRepository implements AgentDefinitionRepositor
 
   setPrimary(id: string): boolean {
     const transaction = this.db.transaction(() => {
+      // Check if agent exists first
+      const exists = this.db.prepare("SELECT 1 FROM agent_definitions WHERE id = ?").get(id);
+      if (!exists) return false;
+      
       // Clear all primary flags
       this.db.prepare("UPDATE agent_definitions SET is_primary = 0").run();
       

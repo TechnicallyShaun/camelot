@@ -273,11 +273,24 @@ describe("SqliteAgentDefinitionRepository", () => {
     const success = repo.setPrimary("nonexistent");
     expect(success).toBe(false);
     
-    // NOTE: This is a bug in the current implementation - transaction clears all primary 
-    // flags even when the target agent doesn't exist, leaving no primary agent.
-    // This should be fixed by checking agent existence before clearing flags.
+    // The original primary agent should remain primary when targeting a non-existent agent
     const primary = repo.findPrimary();
-    expect(primary).toBeUndefined(); // Current buggy behavior
+    expect(primary?.id).toBe("copilot");
+  });
+
+  it("preserves existing primary agent when targeting non-existent agent (regression test)", () => {
+    // Set a specific agent as primary
+    repo.setPrimary("claude");
+    expect(repo.findPrimary()?.id).toBe("claude");
+    
+    // Try to set a non-existent agent as primary
+    const success = repo.setPrimary("does-not-exist");
+    expect(success).toBe(false);
+    
+    // Claude should still be primary (regression test for bug #54)
+    const stillPrimary = repo.findPrimary();
+    expect(stillPrimary?.id).toBe("claude");
+    expect(stillPrimary?.isPrimary).toBe(true);
   });
 
   it("removes an agent", () => {
