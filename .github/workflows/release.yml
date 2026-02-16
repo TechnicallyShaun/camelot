@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -30,15 +30,19 @@ jobs:
         run: npm run build
 
       - name: Package release
+        shell: pwsh
         run: |
-          mkdir -p release
-          cp -r dist/ release/dist/
-          cp -r public/ release/public/
-          cp package.json package-lock.json README.md CONTRIBUTING.md release/
-          cd release && tar -czf ../camelot-${{ github.ref_name }}.tar.gz .
+          New-Item -ItemType Directory -Path release -Force
+          Copy-Item dist/ release/dist -Recurse
+          Copy-Item public/ release/public -Recurse
+          Copy-Item package.json release/
+          Copy-Item package-lock.json release/
+          Copy-Item install.ps1 release/
+          if (Test-Path README.md) { Copy-Item README.md release/ }
+          Compress-Archive -Path release/* -DestinationPath camelot-${{ github.ref_name }}.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: camelot-*.tar.gz
+          files: camelot-*.zip
           generate_release_notes: true

@@ -1,8 +1,11 @@
 # Camelot Installer (Windows PowerShell)
 # Idempotent — safe to re-run for updates.
+# Usage (remote):  irm https://raw.githubusercontent.com/TechnicallyShaun/camelot/main/install.ps1 | iex
+# Usage (local):   .\install.ps1
 
 $INSTALL_DIR = "$env:USERPROFILE\.camelot"
 $PORT = 1187
+$REPO = "TechnicallyShaun/camelot"
 
 Write-Host ""
 Write-Host "  ============================================" -ForegroundColor DarkYellow
@@ -11,7 +14,7 @@ Write-Host "  ============================================" -ForegroundColor Dar
 Write-Host ""
 
 # --- Dependency checks ---
-Write-Host "[1/5] Checking dependencies..." -ForegroundColor Cyan
+Write-Host "[1/6] Checking dependencies..." -ForegroundColor Cyan
 
 $nodeVersion = $null
 try { $nodeVersion = (node --version 2>$null) } catch {}
@@ -34,9 +37,48 @@ if (-not $npmVersion) {
 }
 Write-Host "  npm v$npmVersion" -ForegroundColor Green
 
+# --- Detect remote vs local execution ---
+$isRemote = -not $MyInvocation.MyCommand.Path
+
+if ($isRemote) {
+    Write-Host ""
+    Write-Host "[2/6] Fetching latest release from GitHub..." -ForegroundColor Cyan
+
+    try {
+        $release = Invoke-RestMethod "https://api.github.com/repos/$REPO/releases/latest"
+    } catch {
+        Write-Host "  ERROR: Failed to fetch release info: $_" -ForegroundColor Red
+        exit 1
+    }
+
+    $asset = $release.assets | Where-Object { $_.name -match "\.zip$" } | Select-Object -First 1
+    if (-not $asset) {
+        Write-Host "  ERROR: No .zip artifact found in release $($release.tag_name)" -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "  Version: $($release.tag_name)" -ForegroundColor Green
+    Write-Host "  Downloading $($asset.name)..." -ForegroundColor Cyan
+
+    $zipPath = "$env:TEMP\camelot-release.zip"
+    $extractPath = "$env:TEMP\camelot-release"
+
+    Invoke-WebRequest $asset.browser_download_url -OutFile $zipPath
+    if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+    Expand-Archive $zipPath -DestinationPath $extractPath -Force
+
+    $scriptDir = $extractPath
+    Write-Host "  Downloaded and extracted" -ForegroundColor Green
+} else {
+    Write-Host ""
+    Write-Host "[2/6] Local install from release files..." -ForegroundColor Cyan
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    Write-Host "  Source: $scriptDir" -ForegroundColor Green
+}
+
 # --- Stop existing server if running ---
 Write-Host ""
-Write-Host "[2/5] Stopping existing Camelot server..." -ForegroundColor Cyan
+Write-Host "[3/6] Stopping existing Camelot server..." -ForegroundColor Cyan
 $conns = Get-NetTCPConnection -LocalPort $PORT -ErrorAction SilentlyContinue
 if ($conns) {
     $pids = $conns | Select-Object -ExpandProperty OwningProcess -Unique
@@ -55,7 +97,7 @@ Write-Host "  Done" -ForegroundColor Green
 
 # --- Copy files ---
 Write-Host ""
-Write-Host "[3/5] Installing files to $INSTALL_DIR..." -ForegroundColor Cyan
+Write-Host "[4/6] Installing files to $INSTALL_DIR..." -ForegroundColor Cyan
 
 if (-not (Test-Path $INSTALL_DIR)) {
     New-Item -ItemType Directory -Path $INSTALL_DIR -Force | Out-Null
@@ -63,8 +105,6 @@ if (-not (Test-Path $INSTALL_DIR)) {
 } else {
     Write-Host "  Updating existing installation" -ForegroundColor Green
 }
-
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 foreach ($item in @("dist", "public", "package.json", "package-lock.json")) {
     $src = Join-Path $scriptDir $item
@@ -82,10 +122,9 @@ foreach ($item in @("dist", "public", "package.json", "package-lock.json")) {
 
 # --- Install dependencies ---
 Write-Host ""
-Write-Host "[4/5] Installing npm dependencies..." -ForegroundColor Cyan
+Write-Host "[5/6] Installing npm dependencies..." -ForegroundColor Cyan
 Push-Location $INSTALL_DIR
 try {
-    # Use cmd /c to avoid PowerShell treating npm stderr warnings as errors
     $npmResult = cmd /c "npm install --omit=dev 2>&1"
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  ERROR: npm install failed (exit code $LASTEXITCODE)" -ForegroundColor Red
@@ -101,9 +140,9 @@ try {
     Pop-Location
 }
 
-# --- Initialize database ---
+# --- Start server ---
 Write-Host ""
-Write-Host "[5/5] Initializing database..." -ForegroundColor Cyan
+Write-Host "[6/6] Starting Camelot..." -ForegroundColor Cyan
 
 $serverProc = Start-Process -FilePath "node" -ArgumentList "dist/index.js" -WorkingDirectory $INSTALL_DIR -PassThru -WindowStyle Hidden
 Start-Sleep -Seconds 3
@@ -111,12 +150,18 @@ Start-Sleep -Seconds 3
 try {
     $health = Invoke-RestMethod -Uri "http://localhost:$PORT/api/health" -TimeoutSec 5
     if ($health.status -eq "ok") {
-        Write-Host "  Database initialized and server healthy" -ForegroundColor Green
+        Write-Host "  Server healthy" -ForegroundColor Green
     } else {
         Write-Host "  WARNING: Server responded but health check unexpected" -ForegroundColor Yellow
     }
 } catch {
     Write-Host "  WARNING: Could not verify server health: $_" -ForegroundColor Yellow
+}
+
+# --- Cleanup temp files ---
+if ($isRemote) {
+    Remove-Item "$env:TEMP\camelot-release.zip" -Force -ErrorAction SilentlyContinue
+    Remove-Item "$env:TEMP\camelot-release" -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host ""
