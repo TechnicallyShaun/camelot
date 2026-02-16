@@ -2,11 +2,14 @@ import { spawn } from "node-pty";
 import type { IPty } from "node-pty";
 import type { WebSocket } from "ws";
 import type { Logger } from "pino";
+import type { AgentDefinitionRepository } from "../db/types.js";
 
 interface TerminalSession {
   id: string;
   pty: IPty;
   ws: WebSocket;
+  agentId: string;
+  projectPath: string | null;
   created: Date;
   lastActivity: Date;
 }
@@ -14,15 +17,23 @@ interface TerminalSession {
 export class TerminalManager {
   private sessions = new Map<string, TerminalSession>();
   private logger: Logger;
+  private agentDefinitions: AgentDefinitionRepository;
 
-  constructor(logger: Logger) {
+  constructor(logger: Logger, agentDefinitions: AgentDefinitionRepository) {
     this.logger = logger.child({ component: "terminal" });
+    this.agentDefinitions = agentDefinitions;
   }
 
-  createSession(ws: WebSocket, sessionId?: string): string {
+  createSession(ws: WebSocket, sessionId?: string, agentId?: string, projectPath?: string): string {
     const id = sessionId || this.generateSessionId();
     
-    this.logger.info({ sessionId: id }, "Creating new terminal session");
+    // Get agent configuration, defaulting to primary agent
+    const agent = agentId ? this.agentDefinitions.findById(agentId) : this.agentDefinitions.findPrimary();
+    if (!agent) {
+      throw new Error("No agent configuration found");
+    }
+
+    this.logger.info({ sessionId: id, agent: agent.name }, "Creating new terminal session");
 
     // Platform-specific shell detection
     const shell = process.platform === "win32" 
@@ -34,11 +45,13 @@ export class TerminalManager {
       : [];
 
     try {
+      const cwd = projectPath || process.cwd();
+      
       const pty = spawn(shell, args, {
         name: "xterm-color",
         cols: 80,
         rows: 30,
-        cwd: process.cwd(),
+        cwd,
         env: process.env,
       });
 
@@ -46,6 +59,8 @@ export class TerminalManager {
         id,
         pty,
         ws,
+        agentId: agent.id,
+        projectPath: projectPath ?? null,
         created: new Date(),
         lastActivity: new Date()
       };
@@ -80,10 +95,18 @@ export class TerminalManager {
       // Send session created event
       ws.send(JSON.stringify({
         type: "terminal-created",
-        sessionId: id
+        sessionId: id,
+        agent: agent.name
       }));
 
-      this.logger.info({ sessionId: id, shell }, "Terminal session created");
+      // Auto-start the agent after a brief delay to ensure terminal is ready
+      setTimeout(() => {
+        const agentCommand = this.buildAgentCommand(agent);
+        this.logger.info({ sessionId: id, command: agentCommand }, "Auto-starting agent");
+        pty.write(`${agentCommand}\r`);
+      }, 500);
+
+      this.logger.info({ sessionId: id, shell, agent: agent.name }, "Terminal session created");
       return id;
 
     } catch (error) {
@@ -139,9 +162,11 @@ export class TerminalManager {
     return this.sessions.size;
   }
 
-  getSessions(): Array<{ id: string; created: Date; lastActivity: Date }> {
+  getSessions(): Array<{ id: string; agentId: string; projectPath: string | null; created: Date; lastActivity: Date }> {
     return Array.from(this.sessions.values()).map(session => ({
       id: session.id,
+      agentId: session.agentId,
+      projectPath: session.projectPath,
       created: session.created,
       lastActivity: session.lastActivity
     }));
@@ -149,6 +174,24 @@ export class TerminalManager {
 
   private generateSessionId(): string {
     return `term-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  }
+
+  private buildAgentCommand(agent: any): string {
+    const args = agent.defaultArgs.join(' ');
+    return `${agent.command} ${args}`;
+  }
+
+  getSessionInfo(sessionId: string): { agent: any; projectPath: string | null } | null {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+
+    const agent = this.agentDefinitions.findById(session.agentId);
+    if (!agent) return null;
+
+    return {
+      agent,
+      projectPath: session.projectPath
+    };
   }
 
   // Clean up old inactive sessions

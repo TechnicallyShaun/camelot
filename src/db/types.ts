@@ -61,3 +61,22 @@ export interface AgentRunRepository {
   findById(id: string): AgentRun | undefined;
   updateStatus(id: string, status: AgentRun["status"], exitCode?: number): boolean;
 }
+
+export interface AgentDefinition {
+  readonly id: string;
+  readonly name: string;
+  readonly command: string;
+  readonly defaultArgs: string[];
+  readonly model: string | null;
+  readonly isPrimary: boolean;
+}
+
+export interface AgentDefinitionRepository {
+  create(agent: Omit<AgentDefinition, 'isPrimary'>): AgentDefinition;
+  findAll(): AgentDefinition[];
+  findById(id: string): AgentDefinition | undefined;
+  findPrimary(): AgentDefinition | undefined;
+  update(id: string, updates: Partial<Omit<AgentDefinition, 'id'>>): boolean;
+  setPrimary(id: string): boolean;
+  remove(id: string): boolean;
+}

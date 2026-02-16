@@ -1,11 +1,12 @@
 import { Router, type Request, type Response } from "express";
-import type { ProjectRepository, TicketRepository, AgentRunRepository, TicketStage } from "../db/types.js";
+import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, TicketStage } from "../db/types.js";
 import type { Logger } from "../logger.js";
 
 export interface RoutesDeps {
   readonly projects: ProjectRepository;
   readonly tickets: TicketRepository;
   readonly agentRuns: AgentRunRepository;
+  readonly agentDefinitions: AgentDefinitionRepository;
   readonly logger: Logger;
 }
 
@@ -84,6 +85,95 @@ export function createApiRouter(deps: RoutesDeps): Router {
     const limit = Number(req.query.limit) || 50;
     const runs = deps.agentRuns.findAll(limit);
     res.json(runs);
+  });
+
+  // Agent Configuration
+  router.get("/agents", (_req: Request, res: Response) => {
+    const agents = deps.agentDefinitions.findAll();
+    res.json(agents);
+  });
+
+  router.get("/agents/primary", (_req: Request, res: Response) => {
+    const primary = deps.agentDefinitions.findPrimary();
+    if (!primary) {
+      res.status(404).json({ error: "No primary agent configured" });
+      return;
+    }
+    res.json(primary);
+  });
+
+  router.post("/agents", (req: Request, res: Response) => {
+    const { id, name, command, defaultArgs, model } = req.body as {
+      id?: string;
+      name?: string;
+      command?: string;
+      defaultArgs?: string[];
+      model?: string | null;
+    };
+
+    if (!id || !name || !command || !Array.isArray(defaultArgs)) {
+      res.status(400).json({ error: "id, name, command, and defaultArgs are required" });
+      return;
+    }
+
+    try {
+      const agent = deps.agentDefinitions.create({ id, name, command, defaultArgs, model: model ?? null });
+      res.status(201).json(agent);
+    } catch (error) {
+      res.status(400).json({ error: "Agent ID already exists" });
+    }
+  });
+
+  router.put("/agents/:id", (req: Request, res: Response) => {
+    const id = req.params.id;
+    const updates = req.body as Partial<{
+      name: string;
+      command: string;
+      defaultArgs: string[];
+      model: string | null;
+    }>;
+
+    const success = deps.agentDefinitions.update(id, updates);
+    if (!success) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+
+    const updated = deps.agentDefinitions.findById(id);
+    res.json(updated);
+  });
+
+  router.post("/agents/:id/set-primary", (req: Request, res: Response) => {
+    const id = req.params.id;
+    const success = deps.agentDefinitions.setPrimary(id);
+    if (!success) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    res.json({ id, isPrimary: true });
+  });
+
+  router.delete("/agents/:id", (req: Request, res: Response) => {
+    const id = req.params.id;
+    const agent = deps.agentDefinitions.findById(id);
+    
+    if (!agent) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+
+    if (agent.isPrimary) {
+      res.status(400).json({ error: "Cannot delete primary agent" });
+      return;
+    }
+
+    const removed = deps.agentDefinitions.remove(id);
+    if (!removed) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    
+    res.status(204).end();
   });
 
   return router;

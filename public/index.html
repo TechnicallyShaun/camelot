@@ -222,8 +222,40 @@
         </section>
 
         <section id="terminal-section" class="section">
-          <h2>Terminal Section</h2>
-          <p>Terminal interface coming soon...</p>
+          <div class="terminal-container">
+            <div class="terminal-header">
+              <div class="terminal-tabs" id="terminalTabs">
+                <button class="btn btn-sm btn-secondary" id="newTerminalBtn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  New Terminal
+                </button>
+              </div>
+              <div class="terminal-controls">
+                <button class="btn btn-sm btn-secondary" id="terminalSettingsBtn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="m12 1l3.09 3.26L22 4l-1.74 6.09L22 13l-6.91-.74L12 23l-3.09-3.26L2 20l1.74-6.09L2 11l6.91.74L12 1z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="terminal-content" id="terminalContent">
+              <div class="terminal-empty">
+                <div class="terminal-empty-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                  </svg>
+                </div>
+                <h3>No Active Terminals</h3>
+                <p>Click "New Terminal" to start an AI agent session</p>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
     </main>
@@ -398,6 +430,85 @@
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" id="cancelTicketBtn">Cancel</button>
           <button type="submit" class="btn btn-primary">Create Ticket</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Agent Settings Modal -->
+  <div class="modal" id="agentSettingsModal">
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h2 class="modal-title">Agent Configuration</h2>
+        <button class="modal-close" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="agent-list" id="agentList">
+          <!-- Agent configurations will be loaded here -->
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="addAgentBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Agent
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Agent Modal -->
+  <div class="modal" id="editAgentModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="editAgentTitle">Add Agent</h2>
+        <button class="modal-close" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      
+      <form class="modal-form" id="agentForm">
+        <div class="form-group">
+          <label class="form-label" for="agentId">ID</label>
+          <input class="form-input" type="text" id="agentId" placeholder="e.g., copilot, claude" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="agentName">Display Name</label>
+          <input class="form-input" type="text" id="agentName" placeholder="e.g., Copilot CLI" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="agentCommand">Command</label>
+          <input class="form-input" type="text" id="agentCommand" placeholder="e.g., copilot, claude" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="agentArgs">Default Arguments</label>
+          <input class="form-input" type="text" id="agentArgs" placeholder="e.g., -i --yolo --no-ask-user">
+          <small class="form-help">Space-separated arguments</small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="agentModel">Model (Optional)</label>
+          <input class="form-input" type="text" id="agentModel" placeholder="e.g., gpt-4, claude-3">
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelAgentBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveAgentBtn">Save Agent</button>
         </div>
       </form>
     </div>

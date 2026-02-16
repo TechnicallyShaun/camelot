@@ -6,9 +6,11 @@ import type {
   Ticket,
   TicketStage,
   AgentRun,
+  AgentDefinition,
   ProjectRepository,
   TicketRepository,
   AgentRunRepository,
+  AgentDefinitionRepository,
 } from "./types.js";
 
 export class SqliteDatabase implements Database {
@@ -197,6 +199,92 @@ export class SqliteAgentRunRepository implements AgentRunRepository {
       exitCode: row.exit_code as number | null,
       startedAt: row.started_at as string,
       finishedAt: row.finished_at as string | null,
+    };
+  }
+}
+
+export class SqliteAgentDefinitionRepository implements AgentDefinitionRepository {
+  constructor(private readonly db: BetterSqlite3.Database) {}
+
+  create(agent: Omit<AgentDefinition, 'isPrimary'>): AgentDefinition {
+    const stmt = this.db.prepare(
+      "INSERT INTO agent_definitions (id, name, command, default_args, model) VALUES (?, ?, ?, ?, ?) RETURNING *"
+    );
+    return this.mapAgentDefinition(
+      stmt.get(agent.id, agent.name, agent.command, JSON.stringify(agent.defaultArgs), agent.model) as Record<string, unknown>
+    );
+  }
+
+  findAll(): AgentDefinition[] {
+    const rows = this.db.prepare("SELECT * FROM agent_definitions ORDER BY is_primary DESC, name ASC").all();
+    return rows.map((r) => this.mapAgentDefinition(r as Record<string, unknown>));
+  }
+
+  findById(id: string): AgentDefinition | undefined {
+    const row = this.db.prepare("SELECT * FROM agent_definitions WHERE id = ?").get(id);
+    return row ? this.mapAgentDefinition(row as Record<string, unknown>) : undefined;
+  }
+
+  findPrimary(): AgentDefinition | undefined {
+    const row = this.db.prepare("SELECT * FROM agent_definitions WHERE is_primary = 1").get();
+    return row ? this.mapAgentDefinition(row as Record<string, unknown>) : undefined;
+  }
+
+  update(id: string, updates: Partial<Omit<AgentDefinition, 'id'>>): boolean {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+
+    if (updates.name !== undefined) {
+      fields.push("name = ?");
+      values.push(updates.name);
+    }
+    if (updates.command !== undefined) {
+      fields.push("command = ?");
+      values.push(updates.command);
+    }
+    if (updates.defaultArgs !== undefined) {
+      fields.push("default_args = ?");
+      values.push(JSON.stringify(updates.defaultArgs));
+    }
+    if (updates.model !== undefined) {
+      fields.push("model = ?");
+      values.push(updates.model);
+    }
+
+    if (fields.length === 0) return false;
+
+    values.push(id);
+    const sql = `UPDATE agent_definitions SET ${fields.join(", ")} WHERE id = ?`;
+    const result = this.db.prepare(sql).run(...values);
+    return result.changes > 0;
+  }
+
+  setPrimary(id: string): boolean {
+    const transaction = this.db.transaction(() => {
+      // Clear all primary flags
+      this.db.prepare("UPDATE agent_definitions SET is_primary = 0").run();
+      
+      // Set new primary
+      const result = this.db.prepare("UPDATE agent_definitions SET is_primary = 1 WHERE id = ?").run(id);
+      return result.changes > 0;
+    });
+
+    return transaction();
+  }
+
+  remove(id: string): boolean {
+    const result = this.db.prepare("DELETE FROM agent_definitions WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
+  private mapAgentDefinition(row: Record<string, unknown>): AgentDefinition {
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      command: row.command as string,
+      defaultArgs: JSON.parse(row.default_args as string) as string[],
+      model: row.model as string | null,
+      isPrimary: Boolean(row.is_primary),
     };
   }
 }

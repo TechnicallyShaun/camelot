@@ -9,6 +9,9 @@ class CamelotApp {
       rightPanel: false,
       bottomPanel: false
     };
+    this.terminals = new Map(); // sessionId -> { terminal, session, tab }
+    this.activeTerminal = null;
+    this.agents = [];
     
     this.init();
   }
@@ -20,6 +23,7 @@ class CamelotApp {
     this.setupModals();
     this.setupPanels();
     this.setupButtonAnimations();
+    this.setupTerminal();
     this.loadInitialData();
   }
   

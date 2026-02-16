@@ -26,12 +26,13 @@ logger.info({ dbPath }, "Database initialized");
 const projects = new sqlite_js_1.SqliteProjectRepository(database.db);
 const tickets = new sqlite_js_1.SqliteTicketRepository(database.db);
 const agentRuns = new sqlite_js_1.SqliteAgentRunRepository(database.db);
+const agentDefinitions = new sqlite_js_1.SqliteAgentDefinitionRepository(database.db);
 // Create agent spawner
 const spawner = new spawner_js_1.ProcessAgentSpawner(logger);
 // Create terminal manager
-const terminalManager = new manager_js_1.TerminalManager(logger);
+const terminalManager = new manager_js_1.TerminalManager(logger, agentDefinitions);
 // Create Express app
-const app = (0, app_js_1.createApp)({ projects, tickets, agentRuns, logger });
+const app = (0, app_js_1.createApp)({ projects, tickets, agentRuns, agentDefinitions, logger });
 // Create HTTP server
 const server = (0, node_http_1.createServer)(app);
 // WebSocket server
@@ -59,7 +60,7 @@ function handleWebSocketMessage(ws, message) {
     switch (message.type) {
         case "terminal-create":
             try {
-                const sessionId = terminalManager.createSession(ws, message.sessionId);
+                const sessionId = terminalManager.createSession(ws, message.sessionId, message.agentId, message.projectPath);
                 logger.info({ sessionId }, "Terminal session created via WebSocket");
             }
             catch (error) {
