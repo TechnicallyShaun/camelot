@@ -385,94 +385,64 @@ class CamelotApp {
       return;
     }
 
-    ticketsList.innerHTML = this.tickets.map(ticket => {
-      const created = new Date(ticket.createdAt).toLocaleDateString();
-      const stageClass = (ticket.stage || 'pending').toLowerCase().replace('_', '-');
-      const stageName = this.formatStage(ticket.stage || 'pending');
-      
-      return `
-        <div class="ticket-card" data-ticket-id="${ticket.id}">
-          <div class="ticket-header">
-            <div class="ticket-info">
-              <h3 class="ticket-title">${ticket.title}</h3>
-              <span class="ticket-id">#${ticket.id}</span>
-            </div>
-            <div class="ticket-actions">
-              <select class="ticket-stage-select" onchange="camelot.updateTicketStage(${ticket.id}, this.value)">
-                <option value="pending" ${ticket.stage === 'pending' ? 'selected' : ''}>Pending</option>
-                <option value="in_progress" ${ticket.stage === 'in_progress' ? 'selected' : ''}>In Progress</option>
-                <option value="completed" ${ticket.stage === 'completed' ? 'selected' : ''}>Completed</option>
-                <option value="cancelled" ${ticket.stage === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-              </select>
-              <button class="ticket-action delete" onclick="camelot.deleteTicket(${ticket.id})" title="Delete ticket">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <polyline points="3,6 5,6 21,6"/>
-                  <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
-                  <line x1="10" y1="11" x2="10" y2="17"/>
-                  <line x1="14" y1="11" x2="14" y2="17"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div class="ticket-meta">
-            <span class="ticket-stage badge-${stageClass}">${stageName}</span>
-            <span class="ticket-created">Created ${created}</span>
-          </div>
+    ticketsList.innerHTML = this.tickets.map(ticket => `
+      <div class="ticket-card" data-ticket-id="${ticket.id}">
+        <div class="ticket-header">
+          <h3 class="ticket-title">${ticket.title}</h3>
+          <span class="ticket-stage badge-${ticket.stage}">${this.formatStage(ticket.stage)}</span>
         </div>
-      `;
-    }).join('');
+      </div>
+    `).join('');
   }
 
   renderDashboardTickets() {
     const ticketsList = document.getElementById('ticketsList');
     if (!ticketsList) return;
 
-    if (this.tickets.length === 0) {
+    // Only show open tickets
+    const openTickets = this.tickets.filter(t => t.stage === 'open');
+
+    if (openTickets.length === 0) {
       ticketsList.innerHTML = `
         <div class="empty-state">
-          <p>No tickets yet. Create one above to get started.</p>
+          <p>No open tickets.</p>
         </div>
       `;
       return;
     }
 
-    // Show recent tickets (limit to 10)
-    const recentTickets = this.tickets.slice(0, 10);
-    
-    ticketsList.innerHTML = recentTickets.map(ticket => {
-      const stageClass = (ticket.stage || 'pending').toLowerCase().replace('_', '-');
-      const stageName = this.formatStage(ticket.stage || 'pending');
-      
-      return `
-        <div class="ticket-item" data-ticket-id="${ticket.id}">
-          <div class="ticket-content">
-            <h4 class="ticket-title">${ticket.title}</h4>
-            <div class="ticket-meta">
-              <span class="ticket-id">#${ticket.id}</span>
-              <span class="ticket-stage badge-${stageClass}">${stageName}</span>
-            </div>
-          </div>
-          <div class="ticket-actions">
-            <select class="ticket-stage-select compact" onchange="camelot.updateTicketStage(${ticket.id}, this.value)">
-              <option value="pending" ${ticket.stage === 'pending' ? 'selected' : ''}>Pending</option>
-              <option value="in_progress" ${ticket.stage === 'in_progress' ? 'selected' : ''}>In Progress</option>
-              <option value="completed" ${ticket.stage === 'completed' ? 'selected' : ''}>Completed</option>
-              <option value="cancelled" ${ticket.stage === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-            </select>
-          </div>
-        </div>
-      `;
-    }).join('');
+    ticketsList.innerHTML = openTickets.map(ticket => `
+      <div class="ticket-item" data-ticket-id="${ticket.id}" onmouseenter="this.querySelector('.ticket-close').style.opacity=1" onmouseleave="this.querySelector('.ticket-close').style.opacity=0">
+        <span class="ticket-title">${ticket.title}</span>
+        <button class="ticket-close" onclick="camelot.closeTicket(${ticket.id})" title="Close ticket" style="opacity:0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  async closeTicket(ticketId) {
+    try {
+      await this.apiCall(`/api/tickets/${ticketId}/stage`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: 'closed' })
+      });
+      const ticket = this.tickets.find(t => t.id === ticketId);
+      if (ticket) ticket.stage = 'closed';
+      this.renderDashboardTickets();
+      this.renderTickets();
+    } catch (error) {
+      console.error('❌ Failed to close ticket:', error);
+      this.showError('Failed to close ticket');
+    }
   }
 
   formatStage(stage) {
-    const stageNames = {
-      'pending': 'Pending',
-      'in_progress': 'In Progress',
-      'completed': 'Completed',
-      'cancelled': 'Cancelled'
-    };
-    return stageNames[stage] || stage;
+    return stage === 'open' ? 'Open' : stage === 'closed' ? 'Closed' : stage;
   }
 
   // ACTIVITY - Real API integration

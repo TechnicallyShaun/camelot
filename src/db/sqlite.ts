@@ -41,7 +41,7 @@ export class SqliteDatabase implements Database {
       CREATE TABLE IF NOT EXISTS tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
-        stage TEXT NOT NULL DEFAULT 'inbox',
+        stage TEXT NOT NULL DEFAULT 'open',
         project_id INTEGER,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now')),

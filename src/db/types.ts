@@ -20,13 +20,7 @@ export interface Ticket {
   readonly updatedAt: string;
 }
 
-export type TicketStage =
-  | "inbox"
-  | "cleansing"
-  | "planning"
-  | "development"
-  | "review"
-  | "done";
+export type TicketStage = "open" | "closed";
 
 export interface AgentRun {
   readonly id: string;

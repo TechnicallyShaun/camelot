@@ -207,8 +207,8 @@ This is a plan for developing a new feature.
 
       mockTicketRepo.findAll = vi.fn().mockReturnValue([]);
       mockTicketRepo.create = vi.fn()
-        .mockReturnValueOnce({ id: 1, title: 'New Task 1', stage: 'planning' })
-        .mockReturnValueOnce({ id: 2, title: 'New Task 2', stage: 'done' });
+        .mockReturnValueOnce({ id: 1, title: 'New Task 1', stage: 'open' })
+        .mockReturnValueOnce({ id: 2, title: 'New Task 2', stage: 'closed' });
 
       const result = await reader.syncPlansToTickets(plans, 123);
 
@@ -241,12 +241,12 @@ This is a plan for developing a new feature.
       expect(result.created).toBe(0);
       expect(result.updated).toBe(1);
       expect(result.errors).toHaveLength(0);
-      expect(mockTicketRepo.updateStage).toHaveBeenCalledWith(1, 'done');
+      expect(mockTicketRepo.updateStage).toHaveBeenCalledWith(1, 'closed');
     });
 
     it('should not update tickets if stage is already correct', async () => {
       const existingTickets: Ticket[] = [
-        { id: 1, title: 'Already Done', stage: 'done', projectId: null, createdAt: '', updatedAt: '' },
+        { id: 1, title: 'Already Done', stage: 'closed', projectId: null, createdAt: '', updatedAt: '' },
       ];
 
       const plans = [{

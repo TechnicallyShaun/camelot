@@ -87,15 +87,15 @@ describe("SqliteTicketRepository", () => {
   it("creates a ticket with default stage", () => {
     const ticket = repo.create("Fix the bug");
     expect(ticket.title).toBe("Fix the bug");
-    expect(ticket.stage).toBe("inbox");
+    expect(ticket.stage).toBe("open");
   });
 
   it("updates ticket stage", () => {
     const ticket = repo.create("Stage test");
-    const updated = repo.updateStage(ticket.id, "development");
+    const updated = repo.updateStage(ticket.id, "closed");
     expect(updated).toBe(true);
     const found = repo.findById(ticket.id);
-    expect(found?.stage).toBe("development");
+    expect(found?.stage).toBe("closed");
   });
 
   it("removes a ticket", () => {

@@ -1,6 +1,6 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, basename } from "node:path";
-import type { SdpPlanReader, SdpPlan, SdpTask, TicketRepository, SyncResult } from "./types.js";
+import type { SdpPlanReader, SdpPlan, SdpTask, TicketRepository, SyncResult, TicketStage } from "./types.js";
 import type { Logger } from "../logger.js";
 
 export class FileSystemSdpPlanReader implements SdpPlanReader {
@@ -70,7 +70,7 @@ export class FileSystemSdpPlanReader implements SdpPlanReader {
 
           if (existing) {
             // Update stage based on task completion
-            const targetStage = task.completed ? 'done' : 'planning';
+            const targetStage: TicketStage = task.completed ? 'closed' : 'open';
             if (existing.stage !== targetStage) {
               this.tickets.updateStage(existing.id, targetStage);
               updated++;
@@ -78,7 +78,7 @@ export class FileSystemSdpPlanReader implements SdpPlanReader {
             }
           } else {
             // Create new ticket
-            const stage = task.completed ? 'done' : 'planning';
+            const stage = task.completed ? 'closed' : 'open';
             this.tickets.create(task.title, projectId);
             created++;
             this.logger.debug({ title: task.title, stage }, "Created ticket from SDP plan");

@@ -97,80 +97,81 @@
       <div class="content">
         <!-- Dashboard Section -->
         <section id="dashboard-section" class="section active">
-          
-          <!-- Tabbed Terminal area - TOP -->
-          <div class="terminal-container">
-            <div class="terminal-header">
-              <div class="terminal-tabs" id="terminalTabs">
-                <button class="btn btn-sm btn-secondary" id="newTerminalBtn">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                  New Terminal
-                </button>
+          <div class="dashboard-layout">
+            <!-- LEFT: Terminal + Activity (~85%) -->
+            <div class="dashboard-main">
+              <!-- Tabbed Terminal area -->
+              <div class="terminal-container">
+                <div class="terminal-header">
+                  <div class="terminal-tabs" id="terminalTabs">
+                    <button class="btn btn-sm btn-secondary" id="newTerminalBtn">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      New Terminal
+                    </button>
+                  </div>
+                  <div class="terminal-controls">
+                    <div class="agent-selector" id="agentSelector">
+                      <div class="agent-selector-label">Agent:</div>
+                      <div class="agent-dots" id="agentDots"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="terminal-content" id="terminalContent">
+                  <div class="terminal-empty">
+                    <div class="terminal-empty-icon">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21"/>
+                        <line x1="12" y1="17" x2="12" y2="21"/>
+                      </svg>
+                    </div>
+                    <p>No active terminals — click "New Terminal" to start an AI agent session</p>
+                  </div>
+                </div>
               </div>
-              <div class="terminal-controls">
-                <div class="agent-selector" id="agentSelector">
-                  <div class="agent-selector-label">Agent:</div>
-                  <div class="agent-dots" id="agentDots">
-                    <!-- Agent selector dots will be populated dynamically -->
+
+              <!-- Recent Activity -->
+              <div class="activity-container">
+                <div class="card activity-card">
+                  <div class="card-header">
+                    <h2 class="card-title">Recent Activity</h2>
+                  </div>
+                  <div class="activity-list" id="activityList">
+                    <div class="loading-spinner" id="activityLoading">
+                      <div class="spinner"></div>
+                      <p>Loading activity...</p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="terminal-content" id="terminalContent">
-              <div class="terminal-empty">
-                <div class="terminal-empty-icon">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                    <line x1="8" y1="21" x2="16" y2="21"/>
-                    <line x1="12" y1="17" x2="12" y2="21"/>
-                  </svg>
+
+            <!-- RIGHT: Tickets sidebar (~15%) -->
+            <div class="dashboard-sidebar">
+              <div class="sidebar-section">
+                <h3 class="sidebar-title">Tickets</h3>
+                <div class="new-ticket-container">
+                  <div class="new-ticket-form">
+                    <input type="text" id="newTicketInput" class="new-ticket-input" placeholder="New ticket..." />
+                    <button id="newTicketAddBtn" class="new-ticket-btn" title="Add ticket">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <p>No active terminals — click "New Terminal" to start an AI agent session</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- New ticket input - inline, not modal -->
-          <div class="new-ticket-container">
-            <div class="new-ticket-form">
-              <input type="text" id="newTicketInput" class="new-ticket-input" placeholder="New ticket..." />
-              <button id="newTicketAddBtn" class="new-ticket-btn" title="Add ticket">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <line x1="12" y1="5" x2="12" y2="19"/>
-                  <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <!-- Ticket list - from real API -->
-          <div class="tickets-section">
-            <div class="tickets-list" id="ticketsList">
-              <div class="loading-spinner" id="ticketsLoading">
-                <div class="spinner"></div>
-                <p>Loading tickets...</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Recent Activity at bottom - from real API -->
-          <div class="activity-container">
-            <div class="card activity-card">
-              <div class="card-header">
-                <h2 class="card-title">Recent Activity</h2>
-              </div>
-              <div class="activity-list" id="activityList">
-                <div class="loading-spinner" id="activityLoading">
-                  <div class="spinner"></div>
-                  <p>Loading activity...</p>
+                <div class="tickets-list" id="ticketsList">
+                  <div class="loading-spinner" id="ticketsLoading">
+                    <div class="spinner"></div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
         </section>
 
         <!-- Tickets Section -->

@@ -31,7 +31,7 @@ const createMockProject = (id: number, name: string, location: string): Project 
   createdAt: new Date().toISOString(),
 });
 
-const createMockTicket = (id: number, title: string, stage: TicketStage = "inbox", projectId?: number): Ticket => ({
+const createMockTicket = (id: number, title: string, stage: TicketStage = "open", projectId?: number): Ticket => ({
   id,
   title,
   stage,
@@ -205,7 +205,7 @@ describe("API Routes", () => {
       it("returns all tickets", async () => {
         const mockTicketsData = [
           createMockTicket(1, "Ticket 1"),
-          createMockTicket(2, "Ticket 2", "development"),
+          createMockTicket(2, "Ticket 2", "closed"),
         ];
         vi.mocked(mockTickets.findAll).mockReturnValue(mockTicketsData);
 
@@ -232,7 +232,7 @@ describe("API Routes", () => {
       });
 
       it("creates a new ticket with project ID", async () => {
-        const newTicket = createMockTicket(1, "New Ticket", "inbox", 5);
+        const newTicket = createMockTicket(1, "New Ticket", "open", 5);
         vi.mocked(mockTickets.create).mockReturnValue(newTicket);
 
         const response = await request(app)
@@ -261,11 +261,11 @@ describe("API Routes", () => {
 
         const response = await request(app)
           .patch("/api/tickets/1/stage")
-          .send({ stage: "development" });
+          .send({ stage: "closed" });
 
         expect(response.status).toBe(200);
-        expect(response.body).toEqual({ id: 1, stage: "development" });
-        expect(mockTickets.updateStage).toHaveBeenCalledWith(1, "development");
+        expect(response.body).toEqual({ id: 1, stage: "closed" });
+        expect(mockTickets.updateStage).toHaveBeenCalledWith(1, "closed");
       });
 
       it("returns 404 when ticket not found", async () => {
@@ -273,7 +273,7 @@ describe("API Routes", () => {
 
         const response = await request(app)
           .patch("/api/tickets/999/stage")
-          .send({ stage: "development" });
+          .send({ stage: "closed" });
 
         expect(response.status).toBe(404);
         expect(response.body).toEqual({ error: "Ticket not found" });
