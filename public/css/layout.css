@@ -395,6 +395,26 @@
   50% { background: rgba(245, 158, 11, 0.15); }
 }
 
+/* Project Selector in terminal header */
+.project-selector {
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  max-width: 150px;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.project-selector:focus {
+  border-color: var(--accent-amber);
+  outline: none;
+}
+
 /* Agent Selector */
 .agent-selector {
   display: flex;

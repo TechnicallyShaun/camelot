@@ -542,11 +542,33 @@ class CamelotApp {
   }
 
   // PROJECTS - Real API integration
+  renderProjectSelector() {
+    const selector = document.getElementById('projectSelector');
+    if (!selector) return;
+    const current = selector.value;
+    selector.innerHTML = '<option value="">No project</option>' +
+      this.projects.map(p => `<option value="${p.id}" data-location="${p.location}">${p.name}</option>`).join('');
+    if (current) selector.value = current;
+  }
+
+  getSelectedProjectPath() {
+    const selector = document.getElementById('projectSelector');
+    if (!selector || !selector.value) return null;
+    const opt = selector.selectedOptions[0];
+    return opt ? opt.dataset.location || null : null;
+  }
+
+  getSelectedProjectId() {
+    const selector = document.getElementById('projectSelector');
+    return selector ? (selector.value || null) : null;
+  }
+
   async loadProjects() {
     try {
       const projects = await this.apiCall('/api/projects');
       this.projects = projects;
       this.renderProjects();
+      this.renderProjectSelector();
     } catch (error) {
       console.error('❌ Failed to load projects:', error);
       this.showError('Failed to load projects');
@@ -1217,13 +1239,15 @@ class CamelotApp {
     }
 
     const sessionId = `term-${Date.now()}`;
+    const projectPath = this.getSelectedProjectPath();
     
     // Send WebSocket message to create terminal
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({
         type: 'terminal-create',
         sessionId: sessionId,
-        agentId: this.selectedAgent.id
+        agentId: this.selectedAgent.id,
+        projectPath: projectPath
       }));
     }
 
