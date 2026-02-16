@@ -4,6 +4,10 @@ import type { WebSocket } from "ws";
 import { TerminalManager } from "./manager.js";
 import type { AgentDefinitionRepository, AgentDefinition } from "../db/types.js";
 
+vi.mock("node:fs", () => ({
+  existsSync: vi.fn(() => true),
+}));
+
 // Mock node-pty
 const mockPtyInstance = {
   write: vi.fn(),

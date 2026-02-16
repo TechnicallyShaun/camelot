@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { spawn } from "node-pty";
 import type { IPty } from "node-pty";
 import type { WebSocket } from "ws";
@@ -45,7 +46,14 @@ export class TerminalManager {
       : [];
 
     try {
-      const cwd = projectPath || process.cwd();
+      let cwd = process.cwd();
+      if (projectPath) {
+        if (existsSync(projectPath)) {
+          cwd = projectPath;
+        } else {
+          this.logger.warn({ projectPath }, "Project path does not exist, falling back to default cwd");
+        }
+      }
       
       const pty = spawn(shell, args, {
         name: "xterm-256color",
