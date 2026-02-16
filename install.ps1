@@ -1,7 +1,6 @@
 # Camelot Installer (Windows PowerShell)
 # Idempotent — safe to re-run for updates.
 
-$ErrorActionPreference = "Stop"
 $INSTALL_DIR = "$env:USERPROFILE\.camelot"
 $PORT = 1187
 
@@ -38,16 +37,19 @@ Write-Host "  npm v$npmVersion" -ForegroundColor Green
 # --- Stop existing server if running ---
 Write-Host ""
 Write-Host "[2/5] Stopping existing Camelot server..." -ForegroundColor Cyan
-$procs = Get-NetTCPConnection -LocalPort $PORT -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
-foreach ($pid in $procs) {
-    try {
-        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
-        if ($proc -and $proc.ProcessName -eq "node") {
-            Write-Host "  Stopping node process $pid on port $PORT" -ForegroundColor Yellow
-            Stop-Process -Id $pid -Force
-            Start-Sleep -Seconds 1
-        }
-    } catch {}
+$conns = Get-NetTCPConnection -LocalPort $PORT -ErrorAction SilentlyContinue
+if ($conns) {
+    $pids = $conns | Select-Object -ExpandProperty OwningProcess -Unique
+    foreach ($procId in $pids) {
+        try {
+            $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
+            if ($proc -and $proc.ProcessName -eq "node") {
+                Write-Host "  Stopping node process $procId on port $PORT" -ForegroundColor Yellow
+                Stop-Process -Id $procId -Force
+                Start-Sleep -Seconds 1
+            }
+        } catch {}
+    }
 }
 Write-Host "  Done" -ForegroundColor Green
 
@@ -58,11 +60,12 @@ Write-Host "[3/5] Installing files to $INSTALL_DIR..." -ForegroundColor Cyan
 if (-not (Test-Path $INSTALL_DIR)) {
     New-Item -ItemType Directory -Path $INSTALL_DIR -Force | Out-Null
     Write-Host "  Created $INSTALL_DIR" -ForegroundColor Green
+} else {
+    Write-Host "  Updating existing installation" -ForegroundColor Green
 }
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# Copy dist, public, package files
 foreach ($item in @("dist", "public", "package.json", "package-lock.json")) {
     $src = Join-Path $scriptDir $item
     $dst = Join-Path $INSTALL_DIR $item
@@ -82,12 +85,17 @@ Write-Host ""
 Write-Host "[4/5] Installing npm dependencies..." -ForegroundColor Cyan
 Push-Location $INSTALL_DIR
 try {
-    npm install --omit=dev 2>&1 | Out-Null
+    # Use cmd /c to avoid PowerShell treating npm stderr warnings as errors
+    $npmResult = cmd /c "npm install --omit=dev 2>&1"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  ERROR: npm install failed (exit code $LASTEXITCODE)" -ForegroundColor Red
+        Write-Host $npmResult -ForegroundColor Red
+        exit 1
+    }
     Write-Host "  npm install complete" -ForegroundColor Green
 
-    # Rebuild native modules for this platform
     Write-Host "  Rebuilding native modules..." -ForegroundColor Cyan
-    npm rebuild better-sqlite3 2>&1 | Out-Null
+    $rebuildResult = cmd /c "npm rebuild better-sqlite3 2>&1"
     Write-Host "  Native modules rebuilt" -ForegroundColor Green
 } finally {
     Pop-Location
@@ -97,7 +105,6 @@ try {
 Write-Host ""
 Write-Host "[5/5] Initializing database..." -ForegroundColor Cyan
 
-# Start server briefly to trigger DB init, then verify
 $serverProc = Start-Process -FilePath "node" -ArgumentList "dist/index.js" -WorkingDirectory $INSTALL_DIR -PassThru -WindowStyle Hidden
 Start-Sleep -Seconds 3
 
@@ -112,7 +119,6 @@ try {
     Write-Host "  WARNING: Could not verify server health: $_" -ForegroundColor Yellow
 }
 
-# Leave server running
 Write-Host ""
 Write-Host "  ============================================" -ForegroundColor DarkYellow
 Write-Host "       Camelot is running!" -ForegroundColor Green
