@@ -9,12 +9,15 @@ import type {
   AgentDefinition,
   Skill,
   Tool,
+  TicketActivity,
+  TicketAction,
   ProjectRepository,
   TicketRepository,
   AgentRunRepository,
   AgentDefinitionRepository,
   SkillRepository,
   ToolRepository,
+  TicketActivityRepository,
 } from "./types.js";
 
 export class SqliteDatabase implements Database {
@@ -84,6 +87,16 @@ export class SqliteDatabase implements Database {
         content TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS ticket_activity (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER NOT NULL,
+        session_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+        metadata TEXT,
+        FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
       );
     `);
 
@@ -489,6 +502,68 @@ export class SqliteToolRepository implements ToolRepository {
       content: row.content as string,
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
+    };
+  }
+}
+
+export class SqliteTicketActivityRepository implements TicketActivityRepository {
+  constructor(private readonly db: BetterSqlite3.Database) {}
+
+  create(activity: Omit<TicketActivity, 'id' | 'timestamp'>): TicketActivity {
+    const stmt = this.db.prepare(`
+      INSERT INTO ticket_activity (ticket_id, session_id, action, metadata) 
+      VALUES (?, ?, ?, ?) 
+      RETURNING *
+    `);
+    return this.mapTicketActivity(
+      stmt.get(activity.ticketId, activity.sessionId, activity.action, activity.metadata ?? null) as Record<string, unknown>
+    );
+  }
+
+  findAll(limit = 100): TicketActivity[] {
+    const rows = this.db.prepare(`
+      SELECT * FROM ticket_activity 
+      ORDER BY timestamp DESC 
+      LIMIT ?
+    `).all(limit);
+    return rows.map((r) => this.mapTicketActivity(r as Record<string, unknown>));
+  }
+
+  findByTicketId(ticketId: number): TicketActivity[] {
+    const rows = this.db.prepare(`
+      SELECT * FROM ticket_activity 
+      WHERE ticket_id = ? 
+      ORDER BY timestamp DESC
+    `).all(ticketId);
+    return rows.map((r) => this.mapTicketActivity(r as Record<string, unknown>));
+  }
+
+  findBySessionId(sessionId: string): TicketActivity[] {
+    const rows = this.db.prepare(`
+      SELECT * FROM ticket_activity 
+      WHERE session_id = ? 
+      ORDER BY timestamp DESC
+    `).all(sessionId);
+    return rows.map((r) => this.mapTicketActivity(r as Record<string, unknown>));
+  }
+
+  findByDateRange(startDate: string, endDate: string): TicketActivity[] {
+    const rows = this.db.prepare(`
+      SELECT * FROM ticket_activity 
+      WHERE DATE(timestamp) BETWEEN DATE(?) AND DATE(?) 
+      ORDER BY timestamp DESC
+    `).all(startDate, endDate);
+    return rows.map((r) => this.mapTicketActivity(r as Record<string, unknown>));
+  }
+
+  private mapTicketActivity(row: Record<string, unknown>): TicketActivity {
+    return {
+      id: row.id as number,
+      ticketId: row.ticket_id as number,
+      sessionId: row.session_id as string,
+      action: row.action as TicketAction,
+      timestamp: row.timestamp as string,
+      metadata: row.metadata === null ? undefined : (row.metadata as string),
     };
   }
 }

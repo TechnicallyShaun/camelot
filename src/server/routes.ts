@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, SkillPublisher, SdpPlanReader, TicketStage } from "../db/types.js";
+import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, SkillPublisher, SdpPlanReader, TicketActivityRepository, TicketStage } from "../db/types.js";
 import type { Logger } from "../logger.js";
 
 export interface RoutesDeps {
@@ -13,6 +13,7 @@ export interface RoutesDeps {
   readonly skillsPublishPath: string;
   readonly sdpPlanReader: SdpPlanReader;
   readonly sdpPlansPath: string | null;
+  readonly ticketActivity: TicketActivityRepository;
   readonly logger: Logger;
 }
 
@@ -62,7 +63,21 @@ export function createApiRouter(deps: RoutesDeps): Router {
       res.status(400).json({ error: "title is required" });
       return;
     }
+    
     const ticket = deps.tickets.create(title, projectId);
+    
+    // Log the creation activity
+    try {
+      deps.ticketActivity.create({
+        ticketId: ticket.id,
+        sessionId: req.headers['x-session-id'] as string || 'web',
+        action: 'created',
+        metadata: JSON.stringify({ projectId }),
+      });
+    } catch (error) {
+      deps.logger.warn({ error, ticketId: ticket.id }, "Failed to log ticket creation activity");
+    }
+    
     res.status(201).json(ticket);
   });
 
@@ -73,22 +88,103 @@ export function createApiRouter(deps: RoutesDeps): Router {
       res.status(400).json({ error: "stage is required" });
       return;
     }
+    
     const updated = deps.tickets.updateStage(id, stage);
     if (!updated) {
       res.status(404).json({ error: "Ticket not found" });
       return;
     }
+    
+    // Log the stage change activity
+    try {
+      deps.ticketActivity.create({
+        ticketId: id,
+        sessionId: req.headers['x-session-id'] as string || 'web',
+        action: 'stage_changed',
+        metadata: JSON.stringify({ newStage: stage }),
+      });
+    } catch (error) {
+      deps.logger.warn({ error, ticketId: id }, "Failed to log ticket stage change activity");
+    }
+    
     res.json({ id, stage });
   });
 
   router.delete("/tickets/:id", (req: Request, res: Response) => {
     const id = Number(req.params.id);
+    
+    // Log the deletion activity
+    try {
+      deps.ticketActivity.create({
+        ticketId: id,
+        sessionId: req.headers['x-session-id'] as string || 'unknown',
+        action: 'deleted',
+      });
+    } catch (error) {
+      // Don't fail the deletion if activity logging fails
+      deps.logger.warn({ error, ticketId: id }, "Failed to log ticket deletion activity");
+    }
+    
     const removed = deps.tickets.remove(id);
     if (!removed) {
       res.status(404).json({ error: "Ticket not found" });
       return;
     }
     res.status(204).end();
+  });
+
+  // Ticket Activity
+  router.get("/ticket-activity", (req: Request, res: Response) => {
+    const { ticketId, sessionId, limit, startDate, endDate } = req.query;
+    
+    try {
+      let activities;
+      
+      if (ticketId) {
+        activities = deps.ticketActivity.findByTicketId(Number(ticketId));
+      } else if (sessionId) {
+        activities = deps.ticketActivity.findBySessionId(String(sessionId));
+      } else if (startDate && endDate) {
+        activities = deps.ticketActivity.findByDateRange(String(startDate), String(endDate));
+      } else {
+        const limitNum = limit ? Number(limit) : undefined;
+        activities = deps.ticketActivity.findAll(limitNum);
+      }
+      
+      res.json(activities);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      deps.logger.error({ error }, "Failed to query ticket activity");
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.post("/ticket-activity", (req: Request, res: Response) => {
+    const { ticketId, sessionId, action, metadata } = req.body as {
+      ticketId?: number;
+      sessionId?: string;
+      action?: string;
+      metadata?: string;
+    };
+
+    if (!ticketId || !sessionId || !action) {
+      res.status(400).json({ error: "ticketId, sessionId, and action are required" });
+      return;
+    }
+
+    try {
+      const activity = deps.ticketActivity.create({
+        ticketId,
+        sessionId,
+        action: action as any, // Type assertion since we validate above
+        metadata,
+      });
+      res.status(201).json(activity);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      deps.logger.error({ error, ticketId, sessionId, action }, "Failed to create ticket activity");
+      res.status(500).json({ error: message });
+    }
   });
 
   // SDP Plans

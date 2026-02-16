@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository } from "./sqlite.js";
+import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository, SqliteTicketActivityRepository } from "./sqlite.js";
 import { unlinkSync, existsSync } from "node:fs";
 
 const TEST_DB = ":memory:";
@@ -614,5 +614,176 @@ describe("SqliteToolRepository", () => {
         content: "Second content",
       });
     }).toThrow();
+  });
+});
+
+describe("SqliteTicketActivityRepository", () => {
+  let database: SqliteDatabase;
+  let ticketRepo: SqliteTicketRepository;
+  let activityRepo: SqliteTicketActivityRepository;
+
+  beforeEach(() => {
+    database = new SqliteDatabase(TEST_DB);
+    database.initialize();
+    ticketRepo = new SqliteTicketRepository(database.db);
+    activityRepo = new SqliteTicketActivityRepository(database.db);
+  });
+
+  afterEach(() => {
+    database.close();
+  });
+
+  it("creates ticket activity", () => {
+    // Create a ticket first
+    const ticket = ticketRepo.create("Test ticket");
+
+    const activity = activityRepo.create({
+      ticketId: ticket.id,
+      sessionId: "session-123",
+      action: "viewed",
+      metadata: JSON.stringify({ source: "web" }),
+    });
+
+    expect(activity).toEqual({
+      id: expect.any(Number),
+      ticketId: ticket.id,
+      sessionId: "session-123",
+      action: "viewed",
+      timestamp: expect.any(String),
+      metadata: JSON.stringify({ source: "web" }),
+    });
+  });
+
+  it("creates activity without metadata", () => {
+    const ticket = ticketRepo.create("Test ticket");
+
+    const activity = activityRepo.create({
+      ticketId: ticket.id,
+      sessionId: "session-456",
+      action: "created",
+    });
+
+    expect(activity.metadata).toBeUndefined();
+  });
+
+  it("finds all activities with limit", () => {
+    const ticket = ticketRepo.create("Test ticket");
+
+    // Create multiple activities
+    const sessionIds: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const sessionId = `session-${i}`;
+      sessionIds.push(sessionId);
+      activityRepo.create({
+        ticketId: ticket.id,
+        sessionId,
+        action: "viewed",
+      });
+    }
+
+    const activities = activityRepo.findAll(3);
+    expect(activities).toHaveLength(3);
+    // Should be ordered by timestamp DESC (newest first) - verify sessions are in expected set
+    expect(sessionIds).toContain(activities[0].sessionId);
+    expect(sessionIds).toContain(activities[1].sessionId);
+    expect(sessionIds).toContain(activities[2].sessionId);
+  });
+
+  it("finds activities by ticket ID", () => {
+    const ticket1 = ticketRepo.create("Ticket 1");
+    const ticket2 = ticketRepo.create("Ticket 2");
+
+    activityRepo.create({
+      ticketId: ticket1.id,
+      sessionId: "session-1",
+      action: "viewed",
+    });
+
+    activityRepo.create({
+      ticketId: ticket2.id,
+      sessionId: "session-2",
+      action: "created",
+    });
+
+    activityRepo.create({
+      ticketId: ticket1.id,
+      sessionId: "session-3",
+      action: "updated",
+    });
+
+    const ticket1Activities = activityRepo.findByTicketId(ticket1.id);
+    expect(ticket1Activities).toHaveLength(2);
+    expect(ticket1Activities.every(a => a.ticketId === ticket1.id)).toBe(true);
+
+    const ticket2Activities = activityRepo.findByTicketId(ticket2.id);
+    expect(ticket2Activities).toHaveLength(1);
+    expect(ticket2Activities[0].ticketId).toBe(ticket2.id);
+  });
+
+  it("finds activities by session ID", () => {
+    const ticket = ticketRepo.create("Test ticket");
+
+    activityRepo.create({
+      ticketId: ticket.id,
+      sessionId: "session-abc",
+      action: "viewed",
+    });
+
+    activityRepo.create({
+      ticketId: ticket.id,
+      sessionId: "session-def",
+      action: "created",
+    });
+
+    activityRepo.create({
+      ticketId: ticket.id,
+      sessionId: "session-abc",
+      action: "updated",
+    });
+
+    const sessionActivities = activityRepo.findBySessionId("session-abc");
+    expect(sessionActivities).toHaveLength(2);
+    expect(sessionActivities.every(a => a.sessionId === "session-abc")).toBe(true);
+  });
+
+  it("finds activities by date range", () => {
+    const ticket = ticketRepo.create("Test ticket");
+
+    // Note: This test assumes activities are created with current timestamp
+    // For more precise testing, we'd need to mock datetime() or insert with specific dates
+    activityRepo.create({
+      ticketId: ticket.id,
+      sessionId: "session-today",
+      action: "viewed",
+    });
+
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const activities = activityRepo.findByDateRange(today, today);
+    
+    expect(activities).toHaveLength(1);
+    expect(activities[0].sessionId).toBe("session-today");
+  });
+
+  it("handles different action types", () => {
+    const ticket = ticketRepo.create("Test ticket");
+    const actions = ["viewed", "created", "updated", "deleted", "stage_changed"] as const;
+
+    for (const action of actions) {
+      activityRepo.create({
+        ticketId: ticket.id,
+        sessionId: `session-${action}`,
+        action,
+      });
+    }
+
+    const activities = activityRepo.findAll();
+    expect(activities).toHaveLength(5);
+    
+    const actionMap = new Map(activities.map(a => [a.action, a.sessionId]));
+    expect(actionMap.get("viewed")).toBe("session-viewed");
+    expect(actionMap.get("created")).toBe("session-created");
+    expect(actionMap.get("updated")).toBe("session-updated");
+    expect(actionMap.get("deleted")).toBe("session-deleted");
+    expect(actionMap.get("stage_changed")).toBe("session-stage_changed");
   });
 });

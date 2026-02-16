@@ -143,6 +143,25 @@ export interface SyncResult {
   readonly errors: string[];
 }
 
+export interface TicketActivity {
+  readonly id: number;
+  readonly ticketId: number;
+  readonly sessionId: string;
+  readonly action: TicketAction;
+  readonly timestamp: string;
+  readonly metadata?: string; // JSON string for additional context
+}
+
+export type TicketAction = "viewed" | "created" | "updated" | "deleted" | "stage_changed";
+
+export interface TicketActivityRepository {
+  create(activity: Omit<TicketActivity, 'id' | 'timestamp'>): TicketActivity;
+  findAll(limit?: number): TicketActivity[];
+  findByTicketId(ticketId: number): TicketActivity[];
+  findBySessionId(sessionId: string): TicketActivity[];
+  findByDateRange(startDate: string, endDate: string): TicketActivity[];
+}
+
 export interface ToolRepository {
   create(tool: Omit<Tool, 'id' | 'createdAt' | 'updatedAt'>): Tool;
   findAll(): Tool[];
