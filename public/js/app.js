@@ -1433,6 +1433,16 @@ class CamelotApp {
 
     // Create terminal tab and instance
     this.createTerminalTab(sessionId, this.selectedAgent);
+
+    // Store project context for context bar
+    const selectedProjectId = document.getElementById('projectSelector')?.value;
+    if (selectedProjectId) {
+      const termData = this.terminals.get(sessionId);
+      if (termData) {
+        termData.projectId = Number(selectedProjectId);
+        this.updateTerminalContextBar(termData);
+      }
+    }
   }
 
   createTerminalTab(sessionId, agent) {
