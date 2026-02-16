@@ -1136,6 +1136,13 @@ select.form-input {
   border-color: var(--status-error);
 }
 
+.skill-action.publish:hover,
+.tool-action.publish:hover {
+  background: var(--accent-green);
+  color: white;
+  border-color: var(--accent-green);
+}
+
 .skill-meta,
 .tool-meta {
   display: flex;

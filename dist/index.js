@@ -7,6 +7,7 @@ const node_path_1 = require("node:path");
 const config_js_1 = require("./config.js");
 const logger_js_1 = require("./logger.js");
 const sqlite_js_1 = require("./db/sqlite.js");
+const skill_publisher_js_1 = require("./db/skill-publisher.js");
 const spawner_js_1 = require("./agents/spawner.js");
 const app_js_1 = require("./server/app.js");
 const manager_js_1 = require("./terminal/manager.js");
@@ -27,12 +28,26 @@ const projects = new sqlite_js_1.SqliteProjectRepository(database.db);
 const tickets = new sqlite_js_1.SqliteTicketRepository(database.db);
 const agentRuns = new sqlite_js_1.SqliteAgentRunRepository(database.db);
 const agentDefinitions = new sqlite_js_1.SqliteAgentDefinitionRepository(database.db);
+const skills = new sqlite_js_1.SqliteSkillRepository(database.db);
+const tools = new sqlite_js_1.SqliteToolRepository(database.db);
+// Create skill publisher
+const skillPublisher = new skill_publisher_js_1.FileSystemSkillPublisher(skills, logger);
 // Create agent spawner
 const spawner = new spawner_js_1.ProcessAgentSpawner(logger);
 // Create terminal manager
 const terminalManager = new manager_js_1.TerminalManager(logger, agentDefinitions);
 // Create Express app
-const app = (0, app_js_1.createApp)({ projects, tickets, agentRuns, agentDefinitions, logger });
+const app = (0, app_js_1.createApp)({
+    projects,
+    tickets,
+    agentRuns,
+    agentDefinitions,
+    skills,
+    tools,
+    skillPublisher,
+    skillsPublishPath: config.skillsPublishPath,
+    logger
+});
 // Create HTTP server
 const server = (0, node_http_1.createServer)(app);
 // WebSocket server

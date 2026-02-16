@@ -8,6 +8,7 @@ export interface CamelotConfig {
   readonly logLevel: "debug" | "info" | "warn" | "error";
   readonly defaultAgent: string;
   readonly sdpPlansPath: string | null;
+  readonly skillsPublishPath: string;
   readonly defaultTerminalCwd: string;
 }
 
@@ -18,6 +19,7 @@ const DEFAULTS: CamelotConfig = {
   logLevel: "info",
   defaultAgent: "copilot",
   sdpPlansPath: null,
+  skillsPublishPath: "./skills",
   defaultTerminalCwd: process.cwd(),
 };
 

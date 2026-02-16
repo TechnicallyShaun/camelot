@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, TicketStage } from "../db/types.js";
+import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, SkillPublisher, TicketStage } from "../db/types.js";
 import type { Logger } from "../logger.js";
 
 export interface RoutesDeps {
@@ -9,6 +9,8 @@ export interface RoutesDeps {
   readonly agentDefinitions: AgentDefinitionRepository;
   readonly skills: SkillRepository;
   readonly tools: ToolRepository;
+  readonly skillPublisher: SkillPublisher;
+  readonly skillsPublishPath: string;
   readonly logger: Logger;
 }
 
@@ -255,6 +257,26 @@ export function createApiRouter(deps: RoutesDeps): Router {
       return;
     }
     res.status(204).end();
+  });
+
+  router.post("/skills/:id/publish", async (req: Request, res: Response) => {
+    const skillId = req.params.id;
+    const { outputDir } = req.body as { outputDir?: string };
+    
+    const publishPath = outputDir || deps.skillsPublishPath;
+
+    try {
+      const filePath = await deps.skillPublisher.publishToFile(skillId, publishPath);
+      res.json({ 
+        success: true, 
+        filePath,
+        message: `Skill published to ${filePath}` 
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      deps.logger.error({ skillId, error, publishPath }, "Failed to publish skill");
+      res.status(404).json({ error: message });
+    }
   });
 
   // Tools

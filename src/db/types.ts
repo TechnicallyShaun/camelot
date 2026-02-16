@@ -111,6 +111,11 @@ export interface SkillRepository {
   syncFromFileSystem(skillsPath: string): Promise<void>;
 }
 
+export interface SkillPublisher {
+  publishToFile(skillId: string, outputDir: string): Promise<string>;
+  publishAllToDirectory(outputDir: string): Promise<string[]>;
+}
+
 export interface ToolRepository {
   create(tool: Omit<Tool, 'id' | 'createdAt' | 'updatedAt'>): Tool;
   findAll(): Tool[];

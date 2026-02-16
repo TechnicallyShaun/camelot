@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./logger.js";
 import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository } from "./db/sqlite.js";
+import { FileSystemSkillPublisher } from "./db/skill-publisher.js";
 import { ProcessAgentSpawner } from "./agents/spawner.js";
 import { createApp } from "./server/app.js";
 import { TerminalManager } from "./terminal/manager.js";
@@ -33,6 +34,9 @@ const agentDefinitions = new SqliteAgentDefinitionRepository(database.db);
 const skills = new SqliteSkillRepository(database.db);
 const tools = new SqliteToolRepository(database.db);
 
+// Create skill publisher
+const skillPublisher = new FileSystemSkillPublisher(skills, logger);
+
 // Create agent spawner
 const spawner = new ProcessAgentSpawner(logger);
 
@@ -40,7 +44,17 @@ const spawner = new ProcessAgentSpawner(logger);
 const terminalManager = new TerminalManager(logger, agentDefinitions);
 
 // Create Express app
-const app = createApp({ projects, tickets, agentRuns, agentDefinitions, skills, tools, logger });
+const app = createApp({ 
+  projects, 
+  tickets, 
+  agentRuns, 
+  agentDefinitions, 
+  skills, 
+  tools, 
+  skillPublisher, 
+  skillsPublishPath: config.skillsPublishPath, 
+  logger 
+});
 
 // Create HTTP server
 const server = createServer(app);
