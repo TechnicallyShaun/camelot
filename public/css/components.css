@@ -777,10 +777,10 @@ select.form-input {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-secondary);
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  border: none;
 }
 
 .agent-selector-label {
