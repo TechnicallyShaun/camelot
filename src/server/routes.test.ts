@@ -83,6 +83,8 @@ describe("API Routes", () => {
       findAll: vi.fn(),
       findById: vi.fn(),
       updateStage: vi.fn(),
+      updateProject: vi.fn(),
+      update: vi.fn(),
       remove: vi.fn(),
     };
 
@@ -294,6 +296,44 @@ describe("API Routes", () => {
         expect(response.status).toBe(400);
         expect(response.body).toEqual({ error: "stage is required" });
         expect(mockTickets.updateStage).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("PATCH /api/tickets/:id", () => {
+      it("updates ticket fields", async () => {
+        vi.mocked(mockTickets.findById).mockReturnValue({
+          id: 1, title: "Updated", stage: "open", projectId: 2, createdAt: "2024-01-01", updatedAt: "2024-01-01"
+        });
+        vi.mocked(mockTickets.update).mockReturnValue(true);
+
+        const response = await request(app)
+          .patch("/api/tickets/1")
+          .send({ title: "Updated", projectId: 2 });
+
+        expect(response.status).toBe(200);
+        expect(mockTickets.update).toHaveBeenCalledWith(1, { title: "Updated", projectId: 2 });
+      });
+
+      it("returns 404 when ticket not found", async () => {
+        vi.mocked(mockTickets.findById).mockReturnValue(undefined);
+
+        const response = await request(app)
+          .patch("/api/tickets/999")
+          .send({ title: "x" });
+
+        expect(response.status).toBe(404);
+      });
+
+      it("returns 400 when no updates provided", async () => {
+        vi.mocked(mockTickets.findById).mockReturnValue({
+          id: 1, title: "Test", stage: "open", projectId: null, createdAt: "2024-01-01", updatedAt: "2024-01-01"
+        });
+
+        const response = await request(app)
+          .patch("/api/tickets/1")
+          .send({});
+
+        expect(response.status).toBe(400);
       });
     });
 

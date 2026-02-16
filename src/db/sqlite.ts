@@ -199,6 +199,30 @@ export class SqliteTicketRepository implements TicketRepository {
     return result.changes > 0;
   }
 
+  updateProject(id: number, projectId: number | null): boolean {
+    const result = this.db.prepare(
+      "UPDATE tickets SET project_id = ?, updated_at = datetime('now') WHERE id = ?"
+    ).run(projectId, id);
+    return result.changes > 0;
+  }
+
+  update(id: number, updates: { title?: string; stage?: string; projectId?: number | null }): boolean {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+
+    if (updates.title !== undefined) { fields.push("title = ?"); values.push(updates.title); }
+    if (updates.stage !== undefined) { fields.push("stage = ?"); values.push(updates.stage); }
+    if (updates.projectId !== undefined) { fields.push("project_id = ?"); values.push(updates.projectId); }
+
+    if (fields.length === 0) return false;
+
+    fields.push("updated_at = datetime('now')");
+    values.push(id);
+    const sql = `UPDATE tickets SET ${fields.join(", ")} WHERE id = ?`;
+    const result = this.db.prepare(sql).run(...values);
+    return result.changes > 0;
+  }
+
   remove(id: number): boolean {
     const result = this.db.prepare("DELETE FROM tickets WHERE id = ?").run(id);
     return result.changes > 0;

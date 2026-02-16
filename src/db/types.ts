@@ -46,6 +46,8 @@ export interface TicketRepository {
   findAll(): Ticket[];
   findById(id: number): Ticket | undefined;
   updateStage(id: number, stage: TicketStage): boolean;
+  updateProject(id: number, projectId: number | null): boolean;
+  update(id: number, updates: { title?: string; stage?: TicketStage; projectId?: number | null }): boolean;
   remove(id: number): boolean;
 }
 

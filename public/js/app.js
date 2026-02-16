@@ -396,14 +396,18 @@ class CamelotApp {
       return;
     }
 
-    ticketsList.innerHTML = this.tickets.map(ticket => `
+    ticketsList.innerHTML = this.tickets.map(ticket => {
+      const project = ticket.projectId ? this.projects.find(p => p.id === ticket.projectId) : null;
+      return `
       <div class="ticket-card" data-ticket-id="${ticket.id}">
         <div class="ticket-header">
           <h3 class="ticket-title">${ticket.title}</h3>
           <span class="ticket-stage badge-${ticket.stage}">${this.formatStage(ticket.stage)}</span>
         </div>
+        ${project ? `<div class="ticket-project-tag">${project.name}</div>` : ''}
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   renderDashboardTickets() {

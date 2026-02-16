@@ -332,6 +332,16 @@ select.form-input {
   color: var(--text-tertiary);
 }
 
+.ticket-project-tag {
+  display: inline-block;
+  font-size: var(--text-xs);
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.1);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-1);
+}
+
 /* Log Entries */
 .log-entries {
   font-family: var(--font-mono);

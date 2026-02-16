@@ -85,6 +85,49 @@ export function createApiRouter(deps: RoutesDeps): Router {
     res.status(201).json(ticket);
   });
 
+  // Generic ticket update (title, stage, project_id)
+  router.patch("/tickets/:id", (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const { title, stage, projectId } = req.body as { title?: string; stage?: TicketStage; projectId?: number | null };
+
+    const ticket = deps.tickets.findById(id);
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    const updates: { title?: string; stage?: TicketStage; projectId?: number | null } = {};
+    if (title !== undefined) updates.title = title;
+    if (stage !== undefined) updates.stage = stage;
+    if (projectId !== undefined) updates.projectId = projectId;
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "No updates provided" });
+      return;
+    }
+
+    const updated = deps.tickets.update(id, updates);
+    if (!updated) {
+      res.status(500).json({ error: "Failed to update ticket" });
+      return;
+    }
+
+    // Log activity
+    try {
+      deps.ticketActivity.create({
+        ticketId: id,
+        sessionId: req.headers['x-session-id'] as string || 'web',
+        action: 'updated',
+        metadata: JSON.stringify(updates),
+      });
+    } catch (error) {
+      deps.logger.warn({ error, ticketId: id }, "Failed to log ticket update activity");
+    }
+
+    const result = deps.tickets.findById(id);
+    res.json(result);
+  });
+
   router.patch("/tickets/:id/stage", (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const { stage } = req.body as { stage?: TicketStage };
