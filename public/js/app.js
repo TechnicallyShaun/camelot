@@ -410,12 +410,82 @@ class CamelotApp {
     }).join('');
   }
 
+  getParameterisedSkills() {
+    return this.skills.filter(s => /\{\{[^}]+\}\}/.test(s.content));
+  }
+
+  launchSkillForTicket(skillId, ticketId) {
+    const skill = this.skills.find(s => s.id === skillId);
+    const ticket = this.tickets.find(t => t.id === ticketId);
+    if (!skill || !ticket) return;
+
+    const project = ticket.projectId ? this.projects.find(p => p.id === ticket.projectId) : null;
+
+    // Replace parameters in skill content
+    let prompt = skill.content
+      .replace(/\{\{ticket_number\}\}/g, String(ticket.id))
+      .replace(/\{\{ticket_id\}\}/g, String(ticket.id))
+      .replace(/\{\{ticket_title\}\}/g, ticket.title)
+      .replace(/\{\{project_name\}\}/g, project ? project.name : '')
+      .replace(/\{\{project_path\}\}/g, project ? project.location : '');
+
+    if (!this.selectedAgent) {
+      this.showError('Please select an agent first');
+      return;
+    }
+
+    // Set project selector if ticket has a project
+    if (ticket.projectId) {
+      const selector = document.getElementById('projectSelector');
+      if (selector) selector.value = String(ticket.projectId);
+    }
+
+    // Switch to dashboard
+    this.switchSection('dashboard');
+
+    // Create terminal with the skill prompt
+    const sessionId = `term-${Date.now()}`;
+    const projectPath = project ? project.location : this.getSelectedProjectPath();
+
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'terminal-create',
+        sessionId: sessionId,
+        agentId: this.selectedAgent.id,
+        projectPath: projectPath
+      }));
+    }
+
+    this.createTerminalTab(sessionId, this.selectedAgent);
+
+    // Store context for this terminal
+    const termData = this.terminals.get(sessionId);
+    if (termData) {
+      termData.ticketId = ticketId;
+      termData.projectId = ticket.projectId;
+      termData.skillPrompt = prompt;
+    }
+
+    // After terminal connects, paste the prompt
+    setTimeout(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        // Send the prompt as terminal input after the agent starts
+        this.ws.send(JSON.stringify({
+          type: 'terminal-input',
+          sessionId: sessionId,
+          data: prompt + '\n'
+        }));
+      }
+    }, 2000); // Wait for agent to start
+  }
+
   renderDashboardTickets() {
     const ticketsList = document.getElementById('ticketsList');
     if (!ticketsList) return;
 
     // Only show open tickets
     const openTickets = this.tickets.filter(t => t.stage === 'open');
+    const paramSkills = this.getParameterisedSkills();
 
     if (openTickets.length === 0) {
       ticketsList.innerHTML = `
@@ -426,17 +496,35 @@ class CamelotApp {
       return;
     }
 
-    ticketsList.innerHTML = openTickets.map(ticket => `
-      <div class="ticket-item" data-ticket-id="${ticket.id}" onmouseenter="this.querySelector('.ticket-close').style.opacity=1" onmouseleave="this.querySelector('.ticket-close').style.opacity=0">
+    ticketsList.innerHTML = openTickets.map(ticket => {
+      const skillButtons = paramSkills.map(s => 
+        `<button class="ticket-skill-btn" onclick="event.stopPropagation(); camelot.launchSkillForTicket('${s.id}', ${ticket.id})" title="${s.name}">⚡</button>`
+      ).join('');
+
+      return `
+      <div class="ticket-item" data-ticket-id="${ticket.id}" onclick="camelot.selectTicket(${ticket.id})" onmouseenter="this.querySelector('.ticket-actions').style.opacity=1" onmouseleave="this.querySelector('.ticket-actions').style.opacity=0">
         <span class="ticket-title">${ticket.title}</span>
-        <button class="ticket-close" onclick="camelot.closeTicket(${ticket.id})" title="Close ticket" style="opacity:0">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
+        <div class="ticket-actions" style="opacity:0; display:flex; gap:2px; flex-shrink:0;">
+          ${skillButtons}
+          <button class="ticket-close" onclick="event.stopPropagation(); camelot.closeTicket(${ticket.id})" title="Close ticket">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
+  }
+
+  selectTicket(ticketId) {
+    this.selectedTicketId = ticketId;
+    const ticket = this.tickets.find(t => t.id === ticketId);
+    if (ticket && ticket.projectId) {
+      const selector = document.getElementById('projectSelector');
+      if (selector) selector.value = String(ticket.projectId);
+    }
   }
 
   async closeTicket(ticketId) {
