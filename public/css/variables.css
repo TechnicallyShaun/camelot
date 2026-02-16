@@ -91,7 +91,7 @@
   --sidebar-width: 60px;        /* Thin sidebar - icons only */
   --sidebar-collapsed: 60px;     /* Same as width since it's always thin */
   --header-height: 50px;         /* Thinner header as requested */
-  --bottom-panel-height: 200px;
+  --bottom-panel-height: 150px;
   --right-panel-width: 320px;
 
   /* Breakpoints */
