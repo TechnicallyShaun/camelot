@@ -1111,6 +1111,12 @@ class CamelotApp {
     terminal.open(terminalContainer);
     fitAddon.fit();
     
+    // Re-fit terminal when container resizes
+    const resizeObserver = new ResizeObserver(() => {
+      try { fitAddon.fit(); } catch(e) {}
+    });
+    resizeObserver.observe(terminalContainer);
+    
     // Handle terminal input
     terminal.onData(data => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
