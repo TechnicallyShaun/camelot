@@ -188,7 +188,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   overflow-y: visible;
 }
 
@@ -201,15 +201,18 @@
 }
 
 /* Ticket items in sidebar */
-.ticket-item {
+.dashboard-sidebar .ticket-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: var(--space-1) 0;
   background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-secondary);
   border-radius: 0;
   cursor: default;
   transition: color var(--duration-fast) var(--ease-out);
+  margin: 0;
 }
 
 .ticket-item:hover {
@@ -259,7 +262,7 @@
 
 .terminal-header {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: space-between;
   padding: 0 var(--space-2);
   border-bottom: 1px solid var(--border-secondary);
@@ -268,16 +271,15 @@
   min-height: 32px;
 }
 
+.terminal-controls {
+  display: flex;
+  align-items: center;
+}
+
 .terminal-tabs {
   display: flex;
   align-items: flex-end;
   gap: 0;
-}
-
-.terminal-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
 }
 
 .terminal-content {
@@ -359,6 +361,11 @@
 
 .terminal-tab-icon.custom {
   background: #6b7280;
+}
+
+.new-terminal-tab {
+  padding: var(--space-1) var(--space-2);
+  gap: 0;
 }
 
 .terminal-tab-close {
