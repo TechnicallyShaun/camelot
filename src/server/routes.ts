@@ -4,6 +4,7 @@ import type { Logger } from "../logger.js";
 import type { SkillRunner } from "../execution/skill-runner.js";
 import type { WorkloadAdapterRegistry } from "../workload/adapter-registry.js";
 import type { WorkloadTicket } from "../workload/types.js";
+import type { StandupGenerator } from "../standup/standup-generator.js";
 
 export interface RoutesDeps {
   readonly projects: ProjectRepository;
@@ -24,6 +25,7 @@ export interface RoutesDeps {
   readonly skillRunner?: SkillRunner;
   readonly workloadAdapters?: WorkloadAdapterRegistry;
   readonly workloadAdapterRepository?: WorkloadAdapterRepository;
+  readonly standupGenerator?: StandupGenerator;
   readonly logger: Logger;
 }
 
@@ -688,6 +690,31 @@ export function createApiRouter(deps: RoutesDeps): Router {
       return;
     }
     res.status(204).end();
+  });
+
+  // Standup report
+  router.get("/standup", (req: Request, res: Response) => {
+    if (!deps.standupGenerator) {
+      res.status(503).json({ error: "Standup generator is not configured" });
+      return;
+    }
+
+    const hours = req.query.hours ? Number(req.query.hours) : undefined;
+    const projectId = req.query.projectId ? Number(req.query.projectId) : undefined;
+    const template = typeof req.query.template === "string" ? req.query.template : undefined;
+
+    try {
+      const report = deps.standupGenerator.generate({ hours, projectId, template });
+      if (req.query.format === "text") {
+        res.type("text/markdown").send(report.markdown);
+        return;
+      }
+      res.json(report);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      deps.logger.error({ error }, "Failed to generate standup report");
+      res.status(500).json({ error: message });
+    }
   });
 
   // Workload adapters
