@@ -10,6 +10,7 @@ import type {
   Skill,
   Tool,
   Service,
+  WorkloadAdapterRecord,
   TicketActivity,
   TicketAction,
   ProjectRepository,
@@ -19,6 +20,7 @@ import type {
   SkillRepository,
   ToolRepository,
   ServiceRepository,
+  WorkloadAdapterRepository,
   TicketActivityRepository,
 } from "./types.js";
 
@@ -99,6 +101,16 @@ export class SqliteDatabase implements Database {
         base_url TEXT NOT NULL DEFAULT '',
         auth_type TEXT NOT NULL DEFAULT 'none',
         status TEXT NOT NULL DEFAULT 'active',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS workload_adapters (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        type TEXT NOT NULL,
+        config TEXT NOT NULL DEFAULT '{}',
+        is_active INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
@@ -609,6 +621,103 @@ export class SqliteServiceRepository implements ServiceRepository {
       baseUrl: row.base_url as string,
       authType: row.auth_type as Service['authType'],
       status: row.status as Service['status'],
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    };
+  }
+}
+
+export class SqliteWorkloadAdapterRepository implements WorkloadAdapterRepository {
+  constructor(private readonly db: BetterSqlite3.Database) {}
+
+  create(
+    adapter: Omit<WorkloadAdapterRecord, "id" | "isActive" | "createdAt" | "updatedAt"> & { isActive?: boolean }
+  ): WorkloadAdapterRecord {
+    const id = randomUUID();
+
+    if (adapter.isActive) {
+      this.db.prepare("UPDATE workload_adapters SET is_active = 0, updated_at = datetime('now') WHERE is_active = 1").run();
+    }
+
+    const stmt = this.db.prepare(`
+      INSERT INTO workload_adapters (id, name, type, config, is_active)
+      VALUES (?, ?, ?, ?, ?)
+      RETURNING *
+    `);
+
+    return this.mapWorkloadAdapter(
+      stmt.get(id, adapter.name, adapter.type, adapter.config, adapter.isActive ? 1 : 0) as Record<string, unknown>
+    );
+  }
+
+  findAll(): WorkloadAdapterRecord[] {
+    const rows = this.db.prepare("SELECT * FROM workload_adapters ORDER BY is_active DESC, name ASC").all();
+    return rows.map((row) => this.mapWorkloadAdapter(row as Record<string, unknown>));
+  }
+
+  findById(id: string): WorkloadAdapterRecord | undefined {
+    const row = this.db.prepare("SELECT * FROM workload_adapters WHERE id = ?").get(id);
+    return row ? this.mapWorkloadAdapter(row as Record<string, unknown>) : undefined;
+  }
+
+  findActive(): WorkloadAdapterRecord | undefined {
+    const row = this.db.prepare("SELECT * FROM workload_adapters WHERE is_active = 1").get();
+    return row ? this.mapWorkloadAdapter(row as Record<string, unknown>) : undefined;
+  }
+
+  update(id: string, updates: Partial<Omit<WorkloadAdapterRecord, "id" | "createdAt">>): boolean {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+
+    if (updates.name !== undefined) { fields.push("name = ?"); values.push(updates.name); }
+    if (updates.type !== undefined) { fields.push("type = ?"); values.push(updates.type); }
+    if (updates.config !== undefined) { fields.push("config = ?"); values.push(updates.config); }
+    if (updates.isActive !== undefined) { fields.push("is_active = ?"); values.push(updates.isActive ? 1 : 0); }
+
+    if (fields.length === 0) {
+      return false;
+    }
+
+    if (updates.isActive) {
+      this.db.prepare("UPDATE workload_adapters SET is_active = 0, updated_at = datetime('now') WHERE is_active = 1").run();
+    }
+
+    fields.push("updated_at = datetime('now')");
+    values.push(id);
+    const sql = `UPDATE workload_adapters SET ${fields.join(", ")} WHERE id = ?`;
+    const result = this.db.prepare(sql).run(...values);
+    return result.changes > 0;
+  }
+
+  setActive(id: string): boolean {
+    const transaction = this.db.transaction(() => {
+      const existing = this.db.prepare("SELECT 1 FROM workload_adapters WHERE id = ?").get(id);
+      if (!existing) {
+        return false;
+      }
+
+      this.db.prepare("UPDATE workload_adapters SET is_active = 0, updated_at = datetime('now') WHERE is_active = 1").run();
+      const result = this.db.prepare(
+        "UPDATE workload_adapters SET is_active = 1, updated_at = datetime('now') WHERE id = ?"
+      ).run(id);
+      return result.changes > 0;
+    });
+
+    return transaction();
+  }
+
+  remove(id: string): boolean {
+    const result = this.db.prepare("DELETE FROM workload_adapters WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
+  private mapWorkloadAdapter(row: Record<string, unknown>): WorkloadAdapterRecord {
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      type: row.type as string,
+      config: row.config as string,
+      isActive: Boolean(row.is_active),
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
     };

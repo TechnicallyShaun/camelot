@@ -1,6 +1,9 @@
 import { Router, type Request, type Response } from "express";
-import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, ServiceRepository, SkillPublisher, SdpPlanReader, TicketActivityRepository, DailySummaryGenerator, DailySummaryExporter, TicketStage } from "../db/types.js";
+import type { ProjectRepository, TicketRepository, AgentRunRepository, AgentDefinitionRepository, SkillRepository, ToolRepository, ServiceRepository, SkillPublisher, SdpPlanReader, TicketActivityRepository, DailySummaryGenerator, DailySummaryExporter, TicketStage, WorkloadAdapterRepository } from "../db/types.js";
 import type { Logger } from "../logger.js";
+import type { SkillRunner } from "../execution/skill-runner.js";
+import type { WorkloadAdapterRegistry } from "../workload/adapter-registry.js";
+import type { WorkloadTicket } from "../workload/types.js";
 
 export interface RoutesDeps {
   readonly projects: ProjectRepository;
@@ -18,6 +21,9 @@ export interface RoutesDeps {
   readonly dailySummaryGenerator: DailySummaryGenerator;
   readonly dailySummaryExporter: DailySummaryExporter;
   readonly dailySummaryExportPath: string;
+  readonly skillRunner?: SkillRunner;
+  readonly workloadAdapters?: WorkloadAdapterRegistry;
+  readonly workloadAdapterRepository?: WorkloadAdapterRepository;
   readonly logger: Logger;
 }
 
@@ -523,6 +529,27 @@ export function createApiRouter(deps: RoutesDeps): Router {
     }
   });
 
+  router.post("/skills/:id/execute", async (req: Request, res: Response) => {
+    if (!deps.skillRunner) {
+      res.status(503).json({ error: "Skill execution runtime is not configured" });
+      return;
+    }
+
+    const { profile, params } = req.body as { profile?: string; params?: Record<string, unknown> };
+    try {
+      const result = await deps.skillRunner.executeSkill(req.params.id, { profile, params });
+      if (!result.success) {
+        res.status(400).json(result);
+        return;
+      }
+      res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      deps.logger.error({ error, skillId: req.params.id, profile }, "Failed to execute skill");
+      res.status(500).json({ error: message });
+    }
+  });
+
   // Tools
   router.get("/tools", (_req: Request, res: Response) => {
     const tools = deps.tools.findAll();
@@ -661,6 +688,171 @@ export function createApiRouter(deps: RoutesDeps): Router {
       return;
     }
     res.status(204).end();
+  });
+
+  // Workload adapters
+  router.get("/workload/adapters", (_req: Request, res: Response) => {
+    if (!deps.workloadAdapters) {
+      res.status(503).json({ error: "Workload adapter registry is not configured" });
+      return;
+    }
+
+    res.json({
+      active: deps.workloadAdapters.getActiveName(),
+      adapters: deps.workloadAdapters.list(),
+    });
+  });
+
+  router.post("/workload/adapters/active", (req: Request, res: Response) => {
+    if (!deps.workloadAdapters) {
+      res.status(503).json({ error: "Workload adapter registry is not configured" });
+      return;
+    }
+
+    const { name } = req.body as { name?: string };
+    if (!name) {
+      res.status(400).json({ error: "name is required" });
+      return;
+    }
+
+    const changed = deps.workloadAdapters.setActive(name);
+    if (!changed) {
+      res.status(404).json({ error: "Adapter not found" });
+      return;
+    }
+
+    const adapterRecords = deps.workloadAdapterRepository?.findAll() ?? [];
+    const targetRecord = adapterRecords.find((record) => record.name === name);
+    if (targetRecord && deps.workloadAdapterRepository) {
+      deps.workloadAdapterRepository.setActive(targetRecord.id);
+    }
+
+    res.json({ active: deps.workloadAdapters.getActiveName() });
+  });
+
+  router.get("/workload/tickets", async (req: Request, res: Response) => {
+    const activeAdapter = deps.workloadAdapters?.getActiveAdapter();
+    if (!activeAdapter) {
+      res.status(503).json({ error: "No active workload adapter configured" });
+      return;
+    }
+
+    const { status, assignee } = req.query as { status?: string; assignee?: string };
+    try {
+      const normalizedStatus = status?.toLowerCase();
+      let tickets: WorkloadTicket[];
+      if (normalizedStatus === "backlog") {
+        tickets = await activeAdapter.getBacklog();
+      } else if (normalizedStatus === "in-progress" || normalizedStatus === "in_progress") {
+        tickets = await activeAdapter.getInProgress();
+      } else if (assignee === "@me") {
+        tickets = await activeAdapter.getMyWork();
+      } else {
+        const [backlog, inProgress] = await Promise.all([
+          activeAdapter.getBacklog(),
+          activeAdapter.getInProgress(),
+        ]);
+
+        const merged = new Map<string, WorkloadTicket>();
+        for (const ticket of [...backlog, ...inProgress]) {
+          merged.set(ticket.id, ticket);
+        }
+        tickets = Array.from(merged.values());
+      }
+
+      if (assignee && assignee !== "@me") {
+        const assigneeLower = assignee.toLowerCase();
+        tickets = tickets.filter((ticket) => ticket.assignee?.toLowerCase() === assigneeLower);
+      }
+
+      res.json(tickets);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      deps.logger.error({ error }, "Failed to load workload tickets");
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.get("/workload/tickets/:id", async (req: Request, res: Response) => {
+    const activeAdapter = deps.workloadAdapters?.getActiveAdapter();
+    if (!activeAdapter) {
+      res.status(503).json({ error: "No active workload adapter configured" });
+      return;
+    }
+
+    try {
+      const ticket = await activeAdapter.getTicket(req.params.id);
+      if (!ticket) {
+        res.status(404).json({ error: "Ticket not found" });
+        return;
+      }
+      res.json(ticket);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      deps.logger.error({ error, ticketId: req.params.id }, "Failed to load workload ticket");
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.get("/workload/backlog", async (_req: Request, res: Response) => {
+    const activeAdapter = deps.workloadAdapters?.getActiveAdapter();
+    if (!activeAdapter) {
+      res.status(503).json({ error: "No active workload adapter configured" });
+      return;
+    }
+
+    try {
+      const tickets = await activeAdapter.getBacklog();
+      res.json(tickets);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      deps.logger.error({ error }, "Failed to load backlog workload tickets");
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.get("/workload/in-progress", async (_req: Request, res: Response) => {
+    const activeAdapter = deps.workloadAdapters?.getActiveAdapter();
+    if (!activeAdapter) {
+      res.status(503).json({ error: "No active workload adapter configured" });
+      return;
+    }
+
+    try {
+      const tickets = await activeAdapter.getInProgress();
+      res.json(tickets);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      deps.logger.error({ error }, "Failed to load in-progress workload tickets");
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.post("/workload/tickets/:id/status", async (req: Request, res: Response) => {
+    const activeAdapter = deps.workloadAdapters?.getActiveAdapter();
+    if (!activeAdapter) {
+      res.status(503).json({ error: "No active workload adapter configured" });
+      return;
+    }
+
+    const { status } = req.body as { status?: string };
+    if (!status) {
+      res.status(400).json({ error: "status is required" });
+      return;
+    }
+
+    try {
+      const updated = await activeAdapter.updateStatus(req.params.id, status);
+      if (!updated) {
+        res.status(404).json({ error: "Ticket not found or status update failed" });
+        return;
+      }
+      res.json({ id: req.params.id, status });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      deps.logger.error({ error, ticketId: req.params.id, status }, "Failed to update workload ticket status");
+      res.status(500).json({ error: message });
+    }
   });
 
   // External Terminal Launch

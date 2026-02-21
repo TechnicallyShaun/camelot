@@ -611,6 +611,67 @@ describe("API Routes", () => {
     });
   });
 
+  describe("Workload API", () => {
+    it("lists registered adapters", async () => {
+      deps.workloadAdapters = {
+        list: vi.fn().mockReturnValue([{ name: "github", isActive: true }]),
+        getActiveName: vi.fn().mockReturnValue("github"),
+      } as any;
+
+      const response = await request(app).get("/api/workload/adapters");
+
+      expect(response.status).toBe(200);
+      expect(response.body.active).toBe("github");
+      expect(response.body.adapters).toEqual([{ name: "github", isActive: true }]);
+    });
+
+    it("returns backlog from active adapter", async () => {
+      deps.workloadAdapters = {
+        getActiveAdapter: vi.fn().mockReturnValue({
+          getBacklog: vi.fn().mockResolvedValue([
+            {
+              id: "92",
+              title: "Issue 92",
+              description: "desc",
+              status: "backlog",
+              assignee: null,
+              labels: ["backlog"],
+              url: "https://example.com/92",
+              source: "github",
+            },
+          ]),
+        }),
+      } as any;
+
+      const response = await request(app).get("/api/workload/backlog");
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveLength(1);
+      expect(response.body[0].id).toBe("92");
+    });
+  });
+
+  describe("Skill Execution API", () => {
+    it("executes skill with profile", async () => {
+      deps.skillRunner = {
+        executeSkill: vi.fn().mockResolvedValue({
+          success: true,
+          profile: "fast",
+          steps: [],
+          output: ["ok"],
+        }),
+      } as any;
+
+      const response = await request(app)
+        .post("/api/skills/skill-1/execute")
+        .send({ profile: "fast" });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(deps.skillRunner.executeSkill).toHaveBeenCalledWith("skill-1", { profile: "fast", params: undefined });
+    });
+  });
+
   describe("Terminal API", () => {
     describe("POST /api/terminal/launch", () => {
       it("launches terminal with specific agent", async () => {

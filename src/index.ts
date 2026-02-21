@@ -4,11 +4,15 @@ import { mkdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./logger.js";
-import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository, SqliteServiceRepository, SqliteTicketActivityRepository } from "./db/sqlite.js";
+import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository, SqliteServiceRepository, SqliteWorkloadAdapterRepository, SqliteTicketActivityRepository } from "./db/sqlite.js";
 import { FileSystemSkillPublisher } from "./db/skill-publisher.js";
 import { FileSystemSdpPlanReader } from "./db/sdp-plan-reader.js";
 import { DatabaseDailySummaryGenerator } from "./db/daily-summary-generator.js";
 import { FileSystemDailySummaryExporter } from "./db/daily-summary-exporter.js";
+import { ToolExecutor } from "./execution/tool-executor.js";
+import { SkillRunner } from "./execution/skill-runner.js";
+import { WorkloadAdapterRegistry } from "./workload/adapter-registry.js";
+import { GitHubWorkloadAdapter } from "./workload/github-adapter.js";
 import { ProcessAgentSpawner } from "./agents/spawner.js";
 import { createApp } from "./server/app.js";
 import { TerminalManager } from "./terminal/manager.js";
@@ -37,7 +41,37 @@ const agentDefinitions = new SqliteAgentDefinitionRepository(database.db);
 const skills = new SqliteSkillRepository(database.db);
 const tools = new SqliteToolRepository(database.db);
 const services = new SqliteServiceRepository(database.db);
+const workloadAdapterRepository = new SqliteWorkloadAdapterRepository(database.db);
 const ticketActivity = new SqliteTicketActivityRepository(database.db);
+
+// Create execution runtime
+const toolExecutor = new ToolExecutor({ services });
+const skillRunner = new SkillRunner({ skills, tools, toolExecutor });
+
+// Create workload adapter registry from persisted adapter definitions
+const workloadAdapters = new WorkloadAdapterRegistry();
+for (const adapter of workloadAdapterRepository.findAll()) {
+  if (adapter.type !== "github") {
+    logger.warn({ adapterId: adapter.id, type: adapter.type }, "Skipping unsupported workload adapter type");
+    continue;
+  }
+
+  try {
+    const config = JSON.parse(adapter.config) as { owner?: string; repo?: string; projectNumber?: number };
+    if (!config.owner || !config.repo) {
+      logger.warn({ adapterId: adapter.id }, "Skipping workload adapter with invalid GitHub config");
+      continue;
+    }
+
+    workloadAdapters.register(
+      adapter.name,
+      new GitHubWorkloadAdapter(config.owner, config.repo, config.projectNumber),
+      adapter.isActive
+    );
+  } catch (error) {
+    logger.warn({ error, adapterId: adapter.id }, "Skipping workload adapter with malformed config");
+  }
+}
 
 // Create skill publisher
 const skillPublisher = new FileSystemSkillPublisher(skills, logger);
@@ -74,6 +108,9 @@ const app = createApp({
   dailySummaryGenerator,
   dailySummaryExporter,
   dailySummaryExportPath: config.dailySummaryExportPath,
+  skillRunner,
+  workloadAdapters,
+  workloadAdapterRepository,
   logger 
 });
 
