@@ -44,6 +44,10 @@ class CamelotApp {
     this.ws.onopen = () => {
       console.log('🏰 Connected to Camelot server');
       this.addLogEntry({ message: 'WebSocket connected', level: 'INFO' });
+      // Request reconnect to any running terminal sessions
+      if (this.ws.readyState === 1) {
+        this.ws.send(JSON.stringify({ type: 'terminal-reconnect' }));
+      }
     };
     
     this.ws.onmessage = (event) => {
@@ -80,6 +84,9 @@ class CamelotApp {
           break;
         case 'terminal-error':
           this.handleTerminalError(message);
+          break;
+        case 'terminal-reconnect-result':
+          this.handleTerminalReconnect(message);
           break;
         default:
           console.log('Unknown WebSocket message:', message.type);
@@ -144,6 +151,20 @@ class CamelotApp {
     const newTerminalBtn = document.getElementById('newTerminalBtn');
     if (newTerminalBtn) {
       newTerminalBtn.addEventListener('click', () => this.createNewTerminal());
+    }
+
+    // Workload filters
+    const workloadStatusFilter = document.getElementById('workloadStatusFilter');
+    if (workloadStatusFilter) {
+      workloadStatusFilter.addEventListener('change', () => this.loadWorkload());
+    }
+    const workloadAssigneeFilter = document.getElementById('workloadAssigneeFilter');
+    if (workloadAssigneeFilter) {
+      let debounceTimer;
+      workloadAssigneeFilter.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => this.loadWorkload(), 300);
+      });
     }
   }
 
@@ -233,6 +254,7 @@ class CamelotApp {
       skills: '⚔️ Skills',
       tools: '🔧 Tools',
       services: 'Services',
+      workload: '📋 Workload',
       agents: 'Agents'
     };
     
@@ -282,6 +304,9 @@ class CamelotApp {
         break;
       case 'agents':
         await this.loadAgents();
+        break;
+      case 'workload':
+        await this.loadWorkload();
         break;
     }
   }
@@ -1196,6 +1221,96 @@ class CamelotApp {
     }
   }
 
+  // WORKLOAD - Ticket Dashboard
+  async loadWorkload() {
+    const listEl = document.getElementById('workloadList');
+    if (!listEl) return;
+
+    try {
+      const statusFilter = document.getElementById('workloadStatusFilter')?.value || '';
+      const assigneeFilter = document.getElementById('workloadAssigneeFilter')?.value || '';
+
+      let url = '/api/workload/tickets';
+      const params = new URLSearchParams();
+      if (statusFilter) params.set('status', statusFilter);
+      if (assigneeFilter) params.set('assignee', assigneeFilter);
+      if (params.toString()) url += '?' + params.toString();
+
+      const tickets = await this.apiCall(url);
+
+      if (!tickets || tickets.length === 0) {
+        listEl.innerHTML = '<div class="empty-state"><p>No workload tickets found. Configure a workload adapter first.</p></div>';
+        return;
+      }
+
+      listEl.innerHTML = tickets.map(ticket => `
+        <div class="workload-ticket" data-ticket-id="${ticket.id}" onclick="app.showWorkloadTicket('${ticket.id}')">
+          <div class="workload-ticket-header">
+            <span class="workload-status-badge workload-status-${(ticket.status || 'unknown').toLowerCase().replace(/\s+/g, '-')}">${ticket.status || 'Unknown'}</span>
+            <span class="workload-ticket-title">${ticket.title}</span>
+          </div>
+          ${ticket.assignee ? `<span class="workload-ticket-assignee">👤 ${ticket.assignee}</span>` : ''}
+          ${ticket.labels?.length ? `<div class="workload-ticket-labels">${ticket.labels.map(l => `<span class="workload-label">${l}</span>`).join('')}</div>` : ''}
+        </div>
+      `).join('');
+    } catch (error) {
+      listEl.innerHTML = `<div class="empty-state"><p>Failed to load workload: ${error.message}</p></div>`;
+    }
+  }
+
+  async showWorkloadTicket(ticketId) {
+    const detailEl = document.getElementById('workloadDetail');
+    const contentEl = document.getElementById('workloadDetailContent');
+    if (!detailEl || !contentEl) return;
+
+    try {
+      const ticket = await this.apiCall(`/api/workload/tickets/${ticketId}`);
+      detailEl.style.display = 'block';
+
+      contentEl.innerHTML = `
+        <div class="workload-detail-header">
+          <h3>${ticket.title}</h3>
+          <span class="workload-status-badge workload-status-${(ticket.status || 'unknown').toLowerCase().replace(/\s+/g, '-')}">${ticket.status || 'Unknown'}</span>
+        </div>
+        ${ticket.assignee ? `<p><strong>Assignee:</strong> ${ticket.assignee}</p>` : ''}
+        ${ticket.labels?.length ? `<p><strong>Labels:</strong> ${ticket.labels.join(', ')}</p>` : ''}
+        ${ticket.description ? `<div class="workload-description">${ticket.description}</div>` : ''}
+        ${ticket.url ? `<p><a href="${ticket.url}" target="_blank" class="btn btn-secondary">View in source</a></p>` : ''}
+        <div class="workload-actions">
+          <select id="workloadStatusChange" class="form-select">
+            <option value="">Change status...</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="closed">Closed</option>
+          </select>
+          <button class="btn btn-primary" onclick="app.changeWorkloadTicketStatus('${ticketId}')">Update</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('workloadDetail').style.display='none'">Close</button>
+        </div>
+      `;
+    } catch (error) {
+      contentEl.innerHTML = `<p>Failed to load ticket: ${error.message}</p>`;
+      detailEl.style.display = 'block';
+    }
+  }
+
+  async changeWorkloadTicketStatus(ticketId) {
+    const statusSelect = document.getElementById('workloadStatusChange');
+    const status = statusSelect?.value;
+    if (!status) return;
+
+    try {
+      await this.apiCall(`/api/workload/tickets/${ticketId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      await this.loadWorkload();
+      document.getElementById('workloadDetail').style.display = 'none';
+    } catch (error) {
+      alert('Failed to update status: ' + error.message);
+    }
+  }
+
   // AGENTS - Real API integration
   async loadAgents() {
     try {
@@ -1656,6 +1771,68 @@ class CamelotApp {
   handleTerminalError(message) {
     console.error('❌ Terminal error:', message.error);
     this.showError(`Terminal error: ${message.error}`);
+  }
+
+  handleTerminalReconnect(message) {
+    const sessions = message.sessions || [];
+    if (sessions.length === 0) return;
+
+    console.log(`🔄 Reconnecting ${sessions.length} terminal session(s)`);
+    for (const session of sessions) {
+      // Check if we already have this terminal
+      if (this.terminals.has(session.id)) continue;
+
+      // Create a new xterm instance for the reconnected session
+      const Terminal = window.Terminal?.Terminal || window.Terminal;
+      const FitAddon = window.FitAddon?.FitAddon || window.FitAddon;
+
+      if (!Terminal) continue;
+
+      const terminal = new Terminal({
+        cursorBlink: true,
+        fontSize: 13,
+        fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+        theme: { background: '#1a1b2e', foreground: '#c0caf5' }
+      });
+
+      const fitAddon = new FitAddon();
+      terminal.loadAddon(fitAddon);
+
+      // Find or create a tab for this session
+      const tabContainer = document.querySelector('.terminal-tabs');
+      const terminalContainer = document.querySelector('.terminal-container');
+      if (!tabContainer || !terminalContainer) continue;
+
+      const tab = document.createElement('div');
+      tab.className = 'terminal-tab active';
+      tab.dataset.sessionId = session.id;
+      tab.innerHTML = `<span>${session.agentId || 'Terminal'}</span><button class="tab-close" onclick="app.closeTerminalTab('${session.id}')">&times;</button>`;
+      tabContainer.appendChild(tab);
+
+      const termDiv = document.createElement('div');
+      termDiv.id = `terminal-${session.id}`;
+      termDiv.style.width = '100%';
+      termDiv.style.height = '100%';
+      terminalContainer.appendChild(termDiv);
+
+      terminal.open(termDiv);
+      fitAddon.fit();
+
+      // Write scrollback buffer
+      if (session.scrollback) {
+        terminal.write(session.scrollback);
+      }
+
+      // Wire input
+      terminal.onData(data => {
+        if (this.ws?.readyState === 1) {
+          this.ws.send(JSON.stringify({ type: 'terminal-input', sessionId: session.id, data }));
+        }
+      });
+
+      this.terminals.set(session.id, { terminal, session: { id: session.id }, tab, fitAddon });
+      this.addLogEntry({ message: `Reconnected to terminal session ${session.id}`, level: 'INFO' });
+    }
   }
 
   // MODAL SYSTEM

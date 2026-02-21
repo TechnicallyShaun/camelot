@@ -5,6 +5,8 @@ import type { WebSocket } from "ws";
 import type { Logger } from "pino";
 import type { AgentDefinitionRepository } from "../db/types.js";
 
+const SCROLLBACK_LIMIT = 10 * 1024; // 10KB per session
+
 interface TerminalSession {
   id: string;
   pty: IPty;
@@ -13,6 +15,9 @@ interface TerminalSession {
   projectPath: string | null;
   created: Date;
   lastActivity: Date;
+  scrollback: string;
+  exited: boolean;
+  exitCode: number | null;
 }
 
 export class TerminalManager {
@@ -70,12 +75,20 @@ export class TerminalManager {
         agentId: agent.id,
         projectPath: projectPath ?? null,
         created: new Date(),
-        lastActivity: new Date()
+        lastActivity: new Date(),
+        scrollback: "",
+        exited: false,
+        exitCode: null,
       };
 
       // Handle PTY data (output)
       pty.onData((data) => {
         session.lastActivity = new Date();
+        // Append to scrollback buffer (ring buffer, keep last SCROLLBACK_LIMIT bytes)
+        session.scrollback += data;
+        if (session.scrollback.length > SCROLLBACK_LIMIT) {
+          session.scrollback = session.scrollback.slice(-SCROLLBACK_LIMIT);
+        }
         if (ws.readyState === 1) {
           ws.send(JSON.stringify({
             type: "terminal-data",
@@ -88,6 +101,8 @@ export class TerminalManager {
       // Handle PTY exit
       pty.onExit((event) => {
         this.logger.info({ sessionId: id, exitCode: event.exitCode }, "Terminal session ended");
+        session.exited = true;
+        session.exitCode = event.exitCode;
         if (ws.readyState === 1) {
           ws.send(JSON.stringify({
             type: "terminal-exit",
@@ -95,7 +110,7 @@ export class TerminalManager {
             exitCode: event.exitCode
           }));
         }
-        this.sessions.delete(id);
+        // Don't delete immediately — keep for reconnect. Cleanup handles stale ones.
       });
 
       this.sessions.set(id, session);
@@ -159,11 +174,46 @@ export class TerminalManager {
   killSessionsForWebSocket(ws: WebSocket): void {
     for (const [sessionId, session] of this.sessions) {
       if (session.ws === ws) {
-        this.logger.info({ sessionId }, "Cleaning up session for disconnected WebSocket");
-        session.pty.kill();
-        this.sessions.delete(sessionId);
+        // Don't kill running sessions — they can be reconnected
+        // Only clean up already-exited ones
+        if (session.exited) {
+          this.logger.info({ sessionId }, "Cleaning up exited session for disconnected WebSocket");
+          this.sessions.delete(sessionId);
+        } else {
+          this.logger.info({ sessionId }, "Keeping running session for potential reconnect");
+        }
       }
     }
+  }
+
+  /**
+   * Reconnect a WebSocket to existing terminal sessions.
+   * Returns list of active sessions with their scrollback for replay.
+   */
+  reconnect(ws: WebSocket): Array<{ id: string; agentId: string; scrollback: string; exited: boolean; exitCode: number | null }> {
+    const reconnected: Array<{ id: string; agentId: string; scrollback: string; exited: boolean; exitCode: number | null }> = [];
+
+    for (const [sessionId, session] of this.sessions) {
+      if (session.exited) {
+        // Clean up exited sessions on reconnect
+        this.sessions.delete(sessionId);
+        continue;
+      }
+
+      // Rebind WebSocket for live sessions
+      session.ws = ws;
+      this.logger.info({ sessionId }, "Reconnected WebSocket to running terminal session");
+
+      reconnected.push({
+        id: session.id,
+        agentId: session.agentId,
+        scrollback: session.scrollback,
+        exited: false,
+        exitCode: null,
+      });
+    }
+
+    return reconnected;
   }
 
   getSessionCount(): number {
@@ -246,10 +296,14 @@ export class TerminalManager {
   cleanup(): void {
     const now = new Date();
     const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+    const exitedMaxAge = 5 * 60 * 1000; // 5 minutes for exited sessions
 
     for (const [sessionId, session] of this.sessions) {
       const age = now.getTime() - session.lastActivity.getTime();
-      if (age > maxAge) {
+      if (session.exited && age > exitedMaxAge) {
+        this.logger.info({ sessionId, age }, "Cleaning up exited session");
+        this.sessions.delete(sessionId);
+      } else if (age > maxAge) {
         this.logger.info({ sessionId, age }, "Cleaning up inactive session");
         this.killSession(sessionId);
       }

@@ -182,6 +182,16 @@ function handleWebSocketMessage(ws: WebSocket, message: any): void {
       }
       break;
 
+    case "terminal-reconnect": {
+      const sessions = terminalManager.reconnect(ws);
+      ws.send(JSON.stringify({
+        type: "terminal-reconnect-result",
+        sessions,
+      }));
+      logger.info({ count: sessions.length }, "Terminal reconnect completed");
+      break;
+    }
+
     default:
       logger.debug({ type: message.type }, "Unknown WebSocket message type");
   }

@@ -197,7 +197,8 @@ describe("TerminalManager", () => {
         sessionId,
         exitCode: 0,
       }));
-      expect(manager.getSessionCount()).toBe(0);
+      // Session is kept for reconnect (marked as exited, not deleted)
+      expect(manager.getSessionCount()).toBe(1);
     });
 
     it("sends session created event", () => {
@@ -311,7 +312,7 @@ describe("TerminalManager", () => {
   });
 
   describe("killSessionsForWebSocket", () => {
-    it("kills all sessions for a WebSocket", () => {
+    it("keeps running sessions for reconnect on WebSocket disconnect", () => {
       const agent = createMockAgent("test", "Test");
       vi.mocked(mockAgentDefinitions.findPrimary).mockReturnValue(agent);
 
@@ -321,12 +322,13 @@ describe("TerminalManager", () => {
 
       expect(manager.getSessionCount()).toBe(2);
 
+      // Running sessions are kept for reconnect
       manager.killSessionsForWebSocket(mockWs);
 
-      expect(manager.getSessionCount()).toBe(1);
+      expect(manager.getSessionCount()).toBe(2);
       expect(mockLogger.info).toHaveBeenCalledWith(
         { sessionId: sessionId1 },
-        "Cleaning up session for disconnected WebSocket"
+        "Keeping running session for potential reconnect"
       );
     });
   });
