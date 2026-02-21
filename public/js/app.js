@@ -595,7 +595,7 @@ class CamelotApp {
       <div class="detail-header">
         <div>
           <h2 class="detail-title">#${ticket.id} ${ticket.title}</h2>
-          <div class="detail-meta">${this.formatStage(ticket.stage)} ${project ? `· ${project.name}` : ''}</div>
+          <div class="detail-meta"><span class="ticket-stage badge-${ticket.stage}">${this.formatStage(ticket.stage)}</span>${project ? ` · ${project.name}` : ''}</div>
         </div>
         <div class="detail-actions">
           <button class="btn btn-sm btn-secondary" onclick="camelot.deleteTicket(${ticket.id})">Delete</button>
