@@ -5,6 +5,7 @@ import type { SkillRunner } from "../execution/skill-runner.js";
 import type { WorkloadAdapterRegistry } from "../workload/adapter-registry.js";
 import type { WorkloadTicket } from "../workload/types.js";
 import type { StandupGenerator } from "../standup/standup-generator.js";
+import type { TicketReviewer } from "../review/ticket-reviewer.js";
 
 export interface RoutesDeps {
   readonly projects: ProjectRepository;
@@ -26,6 +27,7 @@ export interface RoutesDeps {
   readonly workloadAdapters?: WorkloadAdapterRegistry;
   readonly workloadAdapterRepository?: WorkloadAdapterRepository;
   readonly standupGenerator?: StandupGenerator;
+  readonly ticketReviewer?: TicketReviewer;
   readonly logger: Logger;
 }
 
@@ -878,6 +880,44 @@ export function createApiRouter(deps: RoutesDeps): Router {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       deps.logger.error({ error, ticketId: req.params.id, status }, "Failed to update workload ticket status");
+      res.status(500).json({ error: message });
+    }
+  });
+
+  // Ticket review
+  router.post("/workload/review", async (_req: Request, res: Response) => {
+    if (!deps.ticketReviewer) {
+      res.status(503).json({ error: "Ticket reviewer is not configured" });
+      return;
+    }
+
+    const activeAdapter = deps.workloadAdapters?.getActiveAdapter();
+    if (!activeAdapter) {
+      res.status(503).json({ error: "No active workload adapter configured" });
+      return;
+    }
+
+    try {
+      const [backlog, inProgress] = await Promise.all([
+        activeAdapter.getBacklog(),
+        activeAdapter.getInProgress(),
+      ]);
+
+      const allTickets = [...backlog, ...inProgress];
+      const ticketsForReview = allTickets.map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        labels: t.labels,
+        status: t.status,
+        assignee: t.assignee ?? undefined,
+      }));
+
+      const summary = deps.ticketReviewer.review(ticketsForReview);
+      res.json(summary);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      deps.logger.error({ error }, "Failed to review workload tickets");
       res.status(500).json({ error: message });
     }
   });
