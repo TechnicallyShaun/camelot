@@ -32,7 +32,8 @@ export class DatabaseDailySummaryGenerator implements DailySummaryGenerator {
         created: 0,
         updated: 0,
         deleted: 0,
-        stage_changed: 0
+        stage_changed: 0,
+        resolved: 0
       };
 
       activities.forEach(activity => {
@@ -81,16 +82,20 @@ export class DatabaseDailySummaryGenerator implements DailySummaryGenerator {
   }
 
   private countCompletedTickets(activities: any[], allTickets: any[]): number {
-    // Count tickets that were moved to 'done' stage during the day
-    const completedCount = activities
-      .filter(activity => 
-        activity.action === 'stage_changed' && 
-        activity.metadata && 
+    // Count tickets that were moved to 'done' stage or resolved during the day
+    const stageChangedCount = activities
+      .filter(activity =>
+        activity.action === 'stage_changed' &&
+        activity.metadata &&
         JSON.parse(activity.metadata).newStage === 'done'
       )
       .length;
 
-    return completedCount;
+    const resolvedCount = activities
+      .filter(activity => activity.action === 'resolved')
+      .length;
+
+    return stageChangedCount + resolvedCount;
   }
 
   private generateEffortBullets(

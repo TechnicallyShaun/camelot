@@ -228,6 +228,24 @@
   min-width: 0;
 }
 
+.ticket-resolve {
+  background: none;
+  border: none;
+  color: var(--status-success);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.ticket-resolve:hover {
+  background: rgba(16, 185, 129, 0.15);
+}
+
 .ticket-close {
   background: none;
   border: none;

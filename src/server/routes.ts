@@ -157,9 +157,46 @@ export function createApiRouter(deps: RoutesDeps): Router {
     res.json({ id, stage });
   });
 
+  // Resolve ticket (auto-closes)
+  router.post("/tickets/:id/resolve", (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+
+    const ticket = deps.tickets.findById(id);
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    if (ticket.stage === "closed") {
+      res.status(400).json({ error: "Ticket is already closed" });
+      return;
+    }
+
+    const updated = deps.tickets.updateStage(id, "closed");
+    if (!updated) {
+      res.status(500).json({ error: "Failed to resolve ticket" });
+      return;
+    }
+
+    // Log the resolved activity
+    try {
+      deps.ticketActivity.create({
+        ticketId: id,
+        sessionId: req.headers['x-session-id'] as string || 'web',
+        action: 'resolved',
+        metadata: JSON.stringify({ previousStage: ticket.stage }),
+      });
+    } catch (error) {
+      deps.logger.warn({ error, ticketId: id }, "Failed to log ticket resolve activity");
+    }
+
+    const result = deps.tickets.findById(id);
+    res.json(result);
+  });
+
   router.delete("/tickets/:id", (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    
+
     // Log the deletion activity
     try {
       deps.ticketActivity.create({
@@ -171,7 +208,7 @@ export function createApiRouter(deps: RoutesDeps): Router {
       // Don't fail the deletion if activity logging fails
       deps.logger.warn({ error, ticketId: id }, "Failed to log ticket deletion activity");
     }
-    
+
     const removed = deps.tickets.remove(id);
     if (!removed) {
       res.status(404).json({ error: "Ticket not found" });

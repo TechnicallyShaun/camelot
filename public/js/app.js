@@ -499,6 +499,11 @@ class CamelotApp {
         <span class="ticket-title">${ticket.title}</span>
         <div class="ticket-actions" style="opacity:0; display:flex; gap:2px; flex-shrink:0;">
           ${skillButtons}
+          <button class="ticket-resolve" onclick="event.stopPropagation(); camelot.resolveTicket(${ticket.id})" title="Resolve ticket">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20,6 9,17 4,12"/>
+            </svg>
+          </button>
           <button class="ticket-close" onclick="event.stopPropagation(); camelot.closeTicket(${ticket.id})" title="Close ticket">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -535,6 +540,21 @@ class CamelotApp {
     if (ticket && ticket.projectId) {
       const selector = document.getElementById('projectSelector');
       if (selector) selector.value = String(ticket.projectId);
+    }
+  }
+
+  async resolveTicket(ticketId) {
+    try {
+      await this.apiCall(`/api/tickets/${ticketId}/resolve`, {
+        method: 'POST',
+      });
+      const ticket = this.tickets.find(t => t.id === ticketId);
+      if (ticket) ticket.stage = 'closed';
+      this.renderDashboardTickets();
+      this.renderTickets();
+    } catch (error) {
+      console.error('❌ Failed to resolve ticket:', error);
+      this.showError('Failed to resolve ticket');
     }
   }
 
@@ -598,6 +618,7 @@ class CamelotApp {
           <div class="detail-meta">${this.formatStage(ticket.stage)} ${project ? `· ${project.name}` : ''}</div>
         </div>
         <div class="detail-actions">
+          ${ticket.stage === 'open' ? `<button class="btn btn-sm btn-primary" onclick="camelot.resolveTicket(${ticket.id})">Resolve</button>` : ''}
           <button class="btn btn-sm btn-secondary" onclick="camelot.deleteTicket(${ticket.id})">Delete</button>
         </div>
       </div>
@@ -671,6 +692,7 @@ class CamelotApp {
     const icons = {
       'created': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
       'stage_changed': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20,6 9,17 4,12"/></svg>',
+      'resolved': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20,6 9,17 4,12"/></svg>',
       'deleted': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3,6 5,6 21,6"/><path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/></svg>'
     };
     return icons[action] || icons.created;
@@ -680,6 +702,7 @@ class CamelotApp {
     const classes = {
       'created': 'success',
       'stage_changed': 'info',
+      'resolved': 'success',
       'deleted': 'warning'
     };
     return classes[action] || 'info';
@@ -695,6 +718,8 @@ class CamelotApp {
       case 'stage_changed':
         const metadata = activity.metadata ? JSON.parse(activity.metadata) : {};
         return `Changed ${ticketTitle} to ${this.formatStage(metadata.newStage || 'unknown')}`;
+      case 'resolved':
+        return `Resolved ${ticketTitle}`;
       case 'deleted':
         return `Deleted ${ticketTitle}`;
       default:

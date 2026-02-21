@@ -117,6 +117,13 @@ describe("API Routes", () => {
         update: vi.fn(),
         remove: vi.fn(),
       },
+      ticketActivity: {
+        create: vi.fn(),
+        findAll: vi.fn().mockReturnValue([]),
+        findByTicketId: vi.fn().mockReturnValue([]),
+        findBySessionId: vi.fn().mockReturnValue([]),
+        findByDateRange: vi.fn().mockReturnValue([]),
+      },
       logger: mockLogger,
     };
 
@@ -354,6 +361,58 @@ describe("API Routes", () => {
 
         expect(response.status).toBe(404);
         expect(response.body).toEqual({ error: "Ticket not found" });
+      });
+    });
+
+    describe("POST /api/tickets/:id/resolve", () => {
+      it("resolves an open ticket and auto-closes it", async () => {
+        const openTicket = createMockTicket(1, "Open Ticket", "open");
+        const closedTicket = createMockTicket(1, "Open Ticket", "closed");
+        vi.mocked(mockTickets.findById)
+          .mockReturnValueOnce(openTicket)
+          .mockReturnValueOnce(closedTicket);
+        vi.mocked(mockTickets.updateStage).mockReturnValue(true);
+
+        const response = await request(app).post("/api/tickets/1/resolve");
+
+        expect(response.status).toBe(200);
+        expect(response.body.stage).toBe("closed");
+        expect(mockTickets.updateStage).toHaveBeenCalledWith(1, "closed");
+      });
+
+      it("logs a resolved activity", async () => {
+        const openTicket = createMockTicket(1, "Open Ticket", "open");
+        vi.mocked(mockTickets.findById).mockReturnValue(openTicket);
+        vi.mocked(mockTickets.updateStage).mockReturnValue(true);
+
+        await request(app).post("/api/tickets/1/resolve");
+
+        expect(deps.ticketActivity.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            ticketId: 1,
+            action: "resolved",
+          })
+        );
+      });
+
+      it("returns 404 when ticket not found", async () => {
+        vi.mocked(mockTickets.findById).mockReturnValue(undefined);
+
+        const response = await request(app).post("/api/tickets/999/resolve");
+
+        expect(response.status).toBe(404);
+        expect(response.body).toEqual({ error: "Ticket not found" });
+      });
+
+      it("returns 400 when ticket is already closed", async () => {
+        const closedTicket = createMockTicket(1, "Closed Ticket", "closed");
+        vi.mocked(mockTickets.findById).mockReturnValue(closedTicket);
+
+        const response = await request(app).post("/api/tickets/1/resolve");
+
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({ error: "Ticket is already closed" });
+        expect(mockTickets.updateStage).not.toHaveBeenCalled();
       });
     });
   });

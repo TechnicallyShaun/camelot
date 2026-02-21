@@ -148,7 +148,7 @@ export interface TicketActivity {
   readonly metadata?: string; // JSON string for additional context
 }
 
-export type TicketAction = "viewed" | "created" | "updated" | "deleted" | "stage_changed";
+export type TicketAction = "viewed" | "created" | "updated" | "deleted" | "stage_changed" | "resolved";
 
 export interface TicketActivityRepository {
   create(activity: Omit<TicketActivity, 'id' | 'timestamp'>): TicketActivity;

@@ -81,6 +81,7 @@ describe('DatabaseDailySummaryGenerator', () => {
           updated: 0,
           deleted: 0,
           stage_changed: 0,
+          resolved: 0,
         },
       },
       effortBullets: ['• No activity recorded'],
