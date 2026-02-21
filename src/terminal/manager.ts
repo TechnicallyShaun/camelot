@@ -209,6 +209,16 @@ export class TerminalManager {
     return `${agent.command} ${filteredArgs.join(' ')}`;
   }
 
+  private escapeForShell(input: string): string {
+    return input
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/`/g, '\\`')
+      .replace(/\$/g, '\\$')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r');
+  }
+
   getSessionInfo(sessionId: string): { agent: any; projectPath: string | null } | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
