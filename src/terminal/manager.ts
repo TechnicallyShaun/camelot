@@ -188,7 +188,7 @@ export class TerminalManager {
     const args = [...agent.defaultArgs];
     
     if (prompt) {
-      const escaped = prompt.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+      const escaped = this.escapeForShell(prompt);
       // Copilot CLI: use -i flag for initial prompt
       if (agent.command === 'copilot') {
         const filteredArgs = args.filter((a: string) => a !== '-i');
@@ -203,6 +203,16 @@ export class TerminalManager {
     }
     
     return `${agent.command} ${args.join(' ')}`;
+  }
+
+  private escapeForShell(input: string): string {
+    return input
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/`/g, '\\`')
+      .replace(/\$/g, '\\$')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r');
   }
 
   getSessionInfo(sessionId: string): { agent: any; projectPath: string | null } | null {
