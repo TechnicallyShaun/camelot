@@ -16,6 +16,7 @@ export interface Ticket {
   readonly title: string;
   readonly stage: TicketStage;
   readonly projectId: number | null;
+  readonly assignedTo: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -47,7 +48,7 @@ export interface TicketRepository {
   findById(id: number): Ticket | undefined;
   updateStage(id: number, stage: TicketStage): boolean;
   updateProject(id: number, projectId: number | null): boolean;
-  update(id: number, updates: { title?: string; stage?: TicketStage; projectId?: number | null }): boolean;
+  update(id: number, updates: { title?: string; stage?: TicketStage; projectId?: number | null; assignedTo?: string | null }): boolean;
   remove(id: number): boolean;
 }
 

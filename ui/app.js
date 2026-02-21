@@ -292,10 +292,14 @@
     list.innerHTML = "";
     for (const t of tickets) {
       const li = document.createElement("li");
+      const assignedHtml = t.assignedTo
+        ? `<span class="ticket-assigned">assigned: ${escapeHtml(t.assignedTo)}</span>`
+        : '';
       li.innerHTML = `
         <div class="ticket-info">
           <span class="ticket-title">${escapeHtml(t.title)}</span>
           <span class="ticket-stage">${t.stage}</span>
+          ${assignedHtml}
         </div>
         <button class="ticket-delete" data-id="${t.id}" title="Delete">&times;</button>
       `;

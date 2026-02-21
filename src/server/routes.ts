@@ -88,7 +88,7 @@ export function createApiRouter(deps: RoutesDeps): Router {
   // Generic ticket update (title, stage, project_id)
   router.patch("/tickets/:id", (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const { title, stage, projectId } = req.body as { title?: string; stage?: TicketStage; projectId?: number | null };
+    const { title, stage, projectId, assignedTo } = req.body as { title?: string; stage?: TicketStage; projectId?: number | null; assignedTo?: string | null };
 
     const ticket = deps.tickets.findById(id);
     if (!ticket) {
@@ -96,10 +96,11 @@ export function createApiRouter(deps: RoutesDeps): Router {
       return;
     }
 
-    const updates: { title?: string; stage?: TicketStage; projectId?: number | null } = {};
+    const updates: { title?: string; stage?: TicketStage; projectId?: number | null; assignedTo?: string | null } = {};
     if (title !== undefined) updates.title = title;
     if (stage !== undefined) updates.stage = stage;
     if (projectId !== undefined) updates.projectId = projectId;
+    if (assignedTo !== undefined) updates.assignedTo = assignedTo;
 
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ error: "No updates provided" });

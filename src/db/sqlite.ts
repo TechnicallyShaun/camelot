@@ -119,6 +119,12 @@ export class SqliteDatabase implements Database {
       UPDATE tickets SET stage = 'open' WHERE stage NOT IN ('open', 'closed');
     `);
 
+    // Add assigned_to column if it doesn't exist
+    const columns = this.db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[];
+    if (!columns.some(c => c.name === "assigned_to")) {
+      this.db.exec("ALTER TABLE tickets ADD COLUMN assigned_to TEXT");
+    }
+
     this.seedDefaultAgents();
   }
 
@@ -206,13 +212,14 @@ export class SqliteTicketRepository implements TicketRepository {
     return result.changes > 0;
   }
 
-  update(id: number, updates: { title?: string; stage?: string; projectId?: number | null }): boolean {
+  update(id: number, updates: { title?: string; stage?: string; projectId?: number | null; assignedTo?: string | null }): boolean {
     const fields: string[] = [];
     const values: unknown[] = [];
 
     if (updates.title !== undefined) { fields.push("title = ?"); values.push(updates.title); }
     if (updates.stage !== undefined) { fields.push("stage = ?"); values.push(updates.stage); }
     if (updates.projectId !== undefined) { fields.push("project_id = ?"); values.push(updates.projectId); }
+    if (updates.assignedTo !== undefined) { fields.push("assigned_to = ?"); values.push(updates.assignedTo); }
 
     if (fields.length === 0) return false;
 
@@ -234,6 +241,7 @@ export class SqliteTicketRepository implements TicketRepository {
       title: row.title as string,
       stage: row.stage as TicketStage,
       projectId: row.project_id as number | null,
+      assignedTo: (row.assigned_to as string) ?? null,
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
     };

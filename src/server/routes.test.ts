@@ -36,6 +36,7 @@ const createMockTicket = (id: number, title: string, stage: TicketStage = "open"
   title,
   stage,
   projectId: projectId ?? null,
+  assignedTo: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 });
@@ -302,7 +303,7 @@ describe("API Routes", () => {
     describe("PATCH /api/tickets/:id", () => {
       it("updates ticket fields", async () => {
         vi.mocked(mockTickets.findById).mockReturnValue({
-          id: 1, title: "Updated", stage: "open", projectId: 2, createdAt: "2024-01-01", updatedAt: "2024-01-01"
+          id: 1, title: "Updated", stage: "open", projectId: 2, assignedTo: null, createdAt: "2024-01-01", updatedAt: "2024-01-01"
         });
         vi.mocked(mockTickets.update).mockReturnValue(true);
 
@@ -326,7 +327,7 @@ describe("API Routes", () => {
 
       it("returns 400 when no updates provided", async () => {
         vi.mocked(mockTickets.findById).mockReturnValue({
-          id: 1, title: "Test", stage: "open", projectId: null, createdAt: "2024-01-01", updatedAt: "2024-01-01"
+          id: 1, title: "Test", stage: "open", projectId: null, assignedTo: null, createdAt: "2024-01-01", updatedAt: "2024-01-01"
         });
 
         const response = await request(app)

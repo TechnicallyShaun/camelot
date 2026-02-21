@@ -265,6 +265,12 @@ html, body {
   letter-spacing: 0.5px;
 }
 
+.ticket-assigned {
+  font-size: 11px;
+  color: var(--accent-amber, #f59e0b);
+  font-family: var(--font-mono);
+}
+
 .ticket-delete {
   background: none;
   border: none;
