@@ -210,6 +210,16 @@ export class TerminalManager {
   }
 
   private escapeForShell(input: string): string {
+    if (process.platform === 'win32') {
+      // PowerShell: backtick is the escape character
+      return input
+        .replace(/`/g, '``')
+        .replace(/"/g, '`"')
+        .replace(/\$/g, '`$')
+        .replace(/\n/g, '`n')
+        .replace(/\r/g, '`r');
+    }
+    // Unix shells: backslash escaping
     return input
       .replace(/\\/g, '\\\\')
       .replace(/"/g, '\\"')
