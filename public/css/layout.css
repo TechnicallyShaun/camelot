@@ -483,23 +483,7 @@
   max-width: 600px;
 }
 
-.new-ticket-input {
-  flex: 1;
-  padding: var(--space-2) 0;
-  border: none;
-  border-bottom: 1px solid var(--border-secondary);
-  border-radius: 0;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  transition: all var(--duration-fast);
-}
-
-.new-ticket-input:focus {
-  outline: none;
-  border-bottom-color: var(--accent-amber);
-  box-shadow: none;
-}
+/* Ticket inputs now use unified .form-input class from components.css */
 
 .new-ticket-btn {
   display: flex;
