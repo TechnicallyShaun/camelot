@@ -84,6 +84,16 @@
             </a>
           </li>
           <li class="nav-item">
+            <a href="#" class="nav-link" data-section="workload" title="Workload">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
+            </a>
+          </li>
+          <li class="nav-item">
             <a href="#" class="nav-link" data-section="agents" title="Agents">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4-4v2"/>
@@ -302,6 +312,33 @@
             <div class="split-list" id="servicesList"></div>
             <div class="split-detail" id="servicesDetail">
               <div class="detail-empty"><p>Select a service to view details</p></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Workload Section -->
+        <section id="workload-section" class="section">
+          <div class="section-header">
+            <h2 class="section-title">Workload</h2>
+            <div class="workload-filters">
+              <select id="workloadStatusFilter" class="form-select">
+                <option value="">All Statuses</option>
+                <option value="backlog">Backlog</option>
+                <option value="in-progress">In Progress</option>
+              </select>
+              <input type="text" id="workloadAssigneeFilter" class="form-input" placeholder="Filter by assignee..." />
+            </div>
+          </div>
+
+          <div class="workload-container">
+            <div class="workload-list" id="workloadList">
+              <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading workload tickets...</p>
+              </div>
+            </div>
+            <div class="workload-detail" id="workloadDetail" style="display:none;">
+              <div class="workload-detail-content" id="workloadDetailContent"></div>
             </div>
           </div>
         </section>
