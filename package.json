@@ -1,6 +1,6 @@
 {
   "name": "camelot",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "AI-powered development cockpit. Multi-agent orchestration for Copilot CLI and Claude Code.",
   "main": "dist/index.js",
   "bin": {
