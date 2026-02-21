@@ -5,6 +5,7 @@ import type { SkillRunner } from "../execution/skill-runner.js";
 import type { WorkloadAdapterRegistry } from "../workload/adapter-registry.js";
 import type { WorkloadTicket } from "../workload/types.js";
 import type { StandupGenerator } from "../standup/standup-generator.js";
+import type { AcceptanceTestRunner } from "../acceptance/test-runner.js";
 import type { TicketReviewer } from "../review/ticket-reviewer.js";
 
 export interface RoutesDeps {
@@ -28,6 +29,7 @@ export interface RoutesDeps {
   readonly workloadAdapterRepository?: WorkloadAdapterRepository;
   readonly standupGenerator?: StandupGenerator;
   readonly ticketReviewer?: TicketReviewer;
+  readonly acceptanceTestRunner?: AcceptanceTestRunner;
   readonly logger: Logger;
 }
 
@@ -956,6 +958,41 @@ export function createApiRouter(deps: RoutesDeps): Router {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       deps.logger.error({ error }, "Failed to review workload tickets");
+      res.status(500).json({ error: message });
+    }
+  });
+
+  // Acceptance testing
+  router.post("/workload/tickets/:id/acceptance-test", async (req: Request, res: Response) => {
+    if (!deps.acceptanceTestRunner) {
+      res.status(503).json({ error: "Acceptance test runner is not configured" });
+      return;
+    }
+
+    const activeAdapter = deps.workloadAdapters?.getActiveAdapter();
+    if (!activeAdapter) {
+      res.status(503).json({ error: "No active workload adapter configured" });
+      return;
+    }
+
+    try {
+      const ticket = await activeAdapter.getTicket(req.params.id);
+      if (!ticket) {
+        res.status(404).json({ error: "Ticket not found" });
+        return;
+      }
+
+      const { navigationSkill } = req.body as { navigationSkill?: string };
+      const summary = await deps.acceptanceTestRunner.run(
+        ticket.id,
+        ticket.title,
+        ticket.description ?? "",
+        navigationSkill
+      );
+      res.json(summary);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      deps.logger.error({ error, ticketId: req.params.id }, "Failed to run acceptance test");
       res.status(500).json({ error: message });
     }
   });
