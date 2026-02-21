@@ -907,6 +907,7 @@ class CamelotApp {
           </div>
         </div>
         <div class="detail-actions">
+          <button class="btn btn-sm btn-primary" onclick="camelot.executeSkill('${skillId}')">▶ Run</button>
           <button class="btn btn-sm btn-secondary" onclick="camelot.showSkillDetail('${skillId}', true)">Edit</button>
           <button class="btn btn-sm btn-secondary" onclick="camelot.publishSkill('${skillId}')">Publish</button>
           <button class="btn btn-sm btn-secondary" onclick="camelot.deleteSkill('${skillId}')">Delete</button>
@@ -939,6 +940,79 @@ class CamelotApp {
     } catch (error) {
       this.showError('Failed to update skill');
     }
+  }
+
+  async executeSkill(skillId) {
+    const skill = this.skills.find(s => s.id === skillId);
+    if (!skill) return;
+
+    // Try to parse content to check for profiles
+    let profiles = [];
+    try {
+      const parsed = JSON.parse(skill.content);
+      if (parsed.profiles) {
+        profiles = Object.keys(parsed.profiles);
+      }
+    } catch {
+      // Try YAML-style profile detection
+      const profileMatch = skill.content.match(/profiles:\s*\n((?:\s+\w+:.*\n?)*)/);
+      if (profileMatch) {
+        const lines = profileMatch[1].split('\n');
+        for (const line of lines) {
+          const m = line.match(/^\s{2,4}(\w+):/);
+          if (m) profiles.push(m[1]);
+        }
+      }
+    }
+
+    let profile = undefined;
+    if (profiles.length > 0) {
+      profile = prompt(`Select profile (${profiles.join(', ')}):`);
+      if (profile === null) return; // Cancelled
+      if (profile && !profiles.includes(profile)) {
+        this.showError(`Unknown profile: ${profile}`);
+        return;
+      }
+    }
+
+    const detail = document.getElementById('skillsDetail');
+    const actionsHtml = detail.querySelector('.detail-actions');
+    if (actionsHtml) {
+      actionsHtml.innerHTML += '<span class="skill-running">⏳ Running...</span>';
+    }
+
+    try {
+      const result = await this.apiCall(`/api/skills/${skillId}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile: profile || undefined })
+      });
+
+      if (result.success) {
+        this.showSuccess(`Skill "${skill.name}" executed successfully (${result.steps?.length || 0} steps)`);
+      } else {
+        this.showError(`Skill execution failed: ${result.error || 'Unknown error'}`);
+      }
+
+      // Show execution result in detail panel
+      const body = detail.querySelector('.detail-body');
+      if (body) {
+        body.innerHTML += `
+          <div class="skill-execution-result ${result.success ? 'success' : 'failure'}">
+            <h4>${result.success ? '✅ Execution Succeeded' : '❌ Execution Failed'}</h4>
+            ${result.error ? `<p class="error-text">${result.error}</p>` : ''}
+            ${result.steps?.length ? `<p>${result.steps.length} step(s) completed</p>` : ''}
+            <pre>${JSON.stringify(result.output || [], null, 2)}</pre>
+          </div>
+        `;
+      }
+    } catch (error) {
+      this.showError(`Failed to execute skill: ${error.message}`);
+    }
+
+    // Remove running indicator
+    const running = detail.querySelector('.skill-running');
+    if (running) running.remove();
   }
 
   openNewSkillModal() {

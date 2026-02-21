@@ -694,6 +694,44 @@ export function createApiRouter(deps: RoutesDeps): Router {
     res.status(204).end();
   });
 
+  // Skill templates
+  router.get("/skill-templates", (_req: Request, res: Response) => {
+    res.json([
+      {
+        id: "env-setup",
+        name: "Environment Setup (Morning Bootstrap)",
+        description: "Declarative recipe for setting up your dev environment. Configure tools and profiles to match your workflow.",
+        content: JSON.stringify({
+          steps: [
+            { id: "db-reset", toolId: "YOUR_DB_TOOL_ID", params: { action: "reset", profile: "seeded" } },
+            { id: "services-start", toolId: "YOUR_SERVICE_TOOL_ID", params: { action: "start" } },
+            { id: "cache-clear", toolId: "YOUR_CACHE_TOOL_ID", params: { scope: "all" } },
+          ],
+          profiles: {
+            "clean-slate": { params: { profile: "empty" } },
+            "seeded": { params: { profile: "seeded" } },
+            "quick": { stepParams: { "cache-clear": { scope: "local" } } },
+          },
+        }, null, 2),
+      },
+      {
+        id: "test-prep",
+        name: "Test Preparation",
+        description: "Prepare environment for running automated tests.",
+        content: JSON.stringify({
+          steps: [
+            { id: "db-reset", toolId: "YOUR_DB_TOOL_ID", params: { action: "reset", profile: "test" } },
+            { id: "seed-data", toolId: "YOUR_SEED_TOOL_ID", params: { dataset: "test-fixtures" } },
+          ],
+          profiles: {
+            "unit": { stepParams: { "db-reset": { profile: "empty" } } },
+            "integration": { stepParams: { "db-reset": { profile: "seeded" } } },
+          },
+        }, null, 2),
+      },
+    ]);
+  });
+
   // Standup report
   router.get("/standup", (req: Request, res: Response) => {
     if (!deps.standupGenerator) {
