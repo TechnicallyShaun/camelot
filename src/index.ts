@@ -11,6 +11,7 @@ import { DatabaseDailySummaryGenerator } from "./db/daily-summary-generator.js";
 import { FileSystemDailySummaryExporter } from "./db/daily-summary-exporter.js";
 import { ToolExecutor } from "./execution/tool-executor.js";
 import { SkillRunner } from "./execution/skill-runner.js";
+import { StandupGenerator } from "./standup/standup-generator.js";
 import { WorkloadAdapterRegistry } from "./workload/adapter-registry.js";
 import { GitHubWorkloadAdapter } from "./workload/github-adapter.js";
 import { ProcessAgentSpawner } from "./agents/spawner.js";
@@ -109,6 +110,7 @@ const app = createApp({
   dailySummaryExporter,
   dailySummaryExportPath: config.dailySummaryExportPath,
   skillRunner,
+  standupGenerator: new StandupGenerator(ticketActivity, tickets, logger),
   workloadAdapters,
   workloadAdapterRepository,
   logger 
