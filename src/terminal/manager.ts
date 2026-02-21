@@ -187,22 +187,26 @@ export class TerminalManager {
   private buildAgentCommand(agent: any, prompt?: string): string {
     const args = [...agent.defaultArgs];
     
+    // Strip -i from default args — we add it back only when there's a prompt
+    const filteredArgs = agent.command === 'copilot'
+      ? args.filter((a: string) => a !== '-i')
+      : args;
+
     if (prompt) {
-      const escaped = prompt.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+      const escaped = this.escapeForShell(prompt);
       // Copilot CLI: use -i flag for initial prompt
       if (agent.command === 'copilot') {
-        const filteredArgs = args.filter((a: string) => a !== '-i');
         return `${agent.command} ${filteredArgs.join(' ')} -i "${escaped}"`;
       }
       // Claude Code: positional argument for initial prompt
       if (agent.command === 'claude') {
-        return `${agent.command} "${escaped}" ${args.join(' ')}`;
+        return `${agent.command} "${escaped}" ${filteredArgs.join(' ')}`;
       }
       // Generic: try positional arg
-      return `${agent.command} ${args.join(' ')} "${escaped}"`;
+      return `${agent.command} ${filteredArgs.join(' ')} "${escaped}"`;
     }
     
-    return `${agent.command} ${args.join(' ')}`;
+    return `${agent.command} ${filteredArgs.join(' ')}`;
   }
 
   getSessionInfo(sessionId: string): { agent: any; projectPath: string | null } | null {
