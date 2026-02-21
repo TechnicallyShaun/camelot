@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository, SqliteServiceRepository, SqliteTicketActivityRepository } from "./sqlite.js";
+import { SqliteDatabase, SqliteProjectRepository, SqliteTicketRepository, SqliteAgentRunRepository, SqliteAgentDefinitionRepository, SqliteSkillRepository, SqliteToolRepository, SqliteServiceRepository, SqliteWorkloadAdapterRepository, SqliteTicketActivityRepository } from "./sqlite.js";
 import { unlinkSync, existsSync } from "node:fs";
 
 const TEST_DB = ":memory:";
@@ -835,5 +835,43 @@ describe("SqliteServiceRepository", () => {
     const svc = repo.create({ name: "To Delete", description: "", provider: "", baseUrl: "", authType: "none", status: "active" });
     expect(repo.remove(svc.id)).toBe(true);
     expect(repo.findById(svc.id)).toBeUndefined();
+  });
+});
+
+describe("SqliteWorkloadAdapterRepository", () => {
+  let database: SqliteDatabase;
+  let repo: SqliteWorkloadAdapterRepository;
+
+  beforeEach(() => {
+    database = new SqliteDatabase(TEST_DB);
+    database.initialize();
+    repo = new SqliteWorkloadAdapterRepository(database.db);
+  });
+
+  afterEach(() => {
+    database.close();
+  });
+
+  it("creates and finds adapters", () => {
+    const created = repo.create({
+      name: "github-main",
+      type: "github",
+      config: JSON.stringify({ owner: "o", repo: "r" }),
+      isActive: true,
+    });
+
+    expect(created.id).toBeDefined();
+    expect(created.isActive).toBe(true);
+    expect(repo.findAll()).toHaveLength(1);
+    expect(repo.findActive()?.id).toBe(created.id);
+  });
+
+  it("switches active adapter", () => {
+    const a = repo.create({ name: "a", type: "github", config: "{}", isActive: true });
+    const b = repo.create({ name: "b", type: "github", config: "{}", isActive: false });
+
+    expect(repo.setActive(b.id)).toBe(true);
+    expect(repo.findActive()?.id).toBe(b.id);
+    expect(repo.findById(a.id)?.isActive).toBe(false);
   });
 });

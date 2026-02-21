@@ -214,3 +214,23 @@ export interface ToolRepository {
   remove(id: string): boolean;
   syncFromFileSystem(toolsPath: string): Promise<void>;
 }
+
+export interface WorkloadAdapterRecord {
+  readonly id: string;
+  readonly name: string;
+  readonly type: string;
+  readonly config: string;
+  readonly isActive: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface WorkloadAdapterRepository {
+  create(adapter: Omit<WorkloadAdapterRecord, "id" | "isActive" | "createdAt" | "updatedAt"> & { isActive?: boolean }): WorkloadAdapterRecord;
+  findAll(): WorkloadAdapterRecord[];
+  findById(id: string): WorkloadAdapterRecord | undefined;
+  findActive(): WorkloadAdapterRecord | undefined;
+  update(id: string, updates: Partial<Omit<WorkloadAdapterRecord, "id" | "createdAt">>): boolean;
+  setActive(id: string): boolean;
+  remove(id: string): boolean;
+}
