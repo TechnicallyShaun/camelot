@@ -9,12 +9,12 @@ export class WindowsTerminalLauncher implements TerminalLauncher {
   constructor(private readonly logger: Logger) {}
 
   async launchExternal(config: TerminalLaunchConfig): Promise<void> {
-    const title = config.title ?? `Camelot - ${config.agent}`;
+    const title = config.title ?? `Camelot - ${config.agent.name}`;
     const agentCommand = this.buildAgentCommand(config);
 
     const wtCommand = `wt.exe new-tab --title "${title}" --startingDirectory "${config.cwd}" powershell -NoExit -Command "${agentCommand}"`;
 
-    this.logger.info({ agent: config.agent, cwd: config.cwd }, "Launching external terminal");
+    this.logger.info({ agent: config.agent.id, cwd: config.cwd }, "Launching external terminal");
 
     try {
       await execAsync(wtCommand);
@@ -26,16 +26,22 @@ export class WindowsTerminalLauncher implements TerminalLauncher {
   }
 
   private buildAgentCommand(config: TerminalLaunchConfig): string {
-    if (config.agent === "copilot") {
-      return config.prompt
-        ? `copilot -i '${config.prompt}' --allow-all-tools --allow-all-paths`
-        : `copilot -i --allow-all-tools --allow-all-paths`;
+    const agent = config.agent;
+    const parts = [agent.command, ...agent.defaultArgs];
+    if (!config.prompt) {
+      return parts.join(" ").trim();
     }
-    if (config.agent === "claude") {
-      return config.prompt
-        ? `claude '${config.prompt}' --dangerously-skip-permissions`
-        : `claude --dangerously-skip-permissions`;
+
+    const escapedPrompt = this.escapeSingleQuoted(config.prompt);
+    if (agent.promptMethod === "flag" && agent.promptFlag) {
+      parts.push(agent.promptFlag, `'${escapedPrompt}'`);
+    } else if (agent.promptMethod === "positional") {
+      parts.push(`'${escapedPrompt}'`);
     }
-    return config.agent;
+    return parts.join(" ").trim();
+  }
+
+  private escapeSingleQuoted(value: string): string {
+    return value.replace(/'/g, "''");
   }
 }

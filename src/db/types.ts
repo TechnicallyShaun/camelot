@@ -64,11 +64,13 @@ export interface AgentDefinition {
   readonly command: string;
   readonly defaultArgs: string[];
   readonly model: string | null;
+  readonly promptMethod: "positional" | "flag" | "none";
+  readonly promptFlag: string | null;
   readonly isPrimary: boolean;
 }
 
 export interface AgentDefinitionRepository {
-  create(agent: Omit<AgentDefinition, 'isPrimary'>): AgentDefinition;
+  create(agent: Omit<AgentDefinition, "id" | "isPrimary">): AgentDefinition;
   findAll(): AgentDefinition[];
   findById(id: string): AgentDefinition | undefined;
   findPrimary(): AgentDefinition | undefined;

@@ -165,11 +165,12 @@ describe("SqliteAgentDefinitionRepository", () => {
 
   it("creates an agent definition", () => {
     const agent = repo.create({
-      id: "test-agent",
       name: "Test Agent",
       command: "test-command",
       defaultArgs: ["--test", "--arg"],
       model: "gpt-4",
+      promptMethod: "none",
+      promptFlag: null,
     });
     
     expect(agent.id).toBe("test-agent");
@@ -177,16 +178,19 @@ describe("SqliteAgentDefinitionRepository", () => {
     expect(agent.command).toBe("test-command");
     expect(agent.defaultArgs).toEqual(["--test", "--arg"]);
     expect(agent.model).toBe("gpt-4");
+    expect(agent.promptMethod).toBe("none");
+    expect(agent.promptFlag).toBeNull();
     expect(agent.isPrimary).toBe(false);
   });
 
   it("finds all agents ordered by primary first", () => {
     repo.create({
-      id: "secondary",
       name: "Secondary Agent",
       command: "secondary",
       defaultArgs: [],
       model: null,
+      promptMethod: "none",
+      promptFlag: null,
     });
 
     const all = repo.findAll();
@@ -312,8 +316,10 @@ describe("SqliteAgentDefinitionRepository", () => {
     const copilot = agents.find(a => a.id === "copilot");
     expect(copilot?.name).toBe("Copilot CLI");
     expect(copilot?.command).toBe("copilot");
-    expect(copilot?.defaultArgs).toEqual(["-i", "--allow-all-tools", "--allow-all-paths", "--no-ask-user"]);
+    expect(copilot?.defaultArgs).toEqual(["--allow-all-tools", "--allow-all-paths", "--no-ask-user"]);
     expect(copilot?.model).toBeNull();
+    expect(copilot?.promptMethod).toBe("flag");
+    expect(copilot?.promptFlag).toBe("-i");
     expect(copilot?.isPrimary).toBe(true);
     
     const claude = agents.find(a => a.id === "claude");
@@ -321,17 +327,20 @@ describe("SqliteAgentDefinitionRepository", () => {
     expect(claude?.command).toBe("claude");
     expect(claude?.defaultArgs).toEqual(["--dangerously-skip-permissions"]);
     expect(claude?.model).toBeNull();
+    expect(claude?.promptMethod).toBe("positional");
+    expect(claude?.promptFlag).toBeNull();
     expect(claude?.isPrimary).toBe(false);
   });
 
   it("throws error when creating agent with duplicate id", () => {
     expect(() => {
       repo.create({
-        id: "copilot", // Duplicate of seeded agent
-        name: "Duplicate Agent",
+        name: "Copilot", // Slugifies to duplicate seeded id "copilot"
         command: "duplicate",
         defaultArgs: [],
         model: null,
+        promptMethod: "none",
+        promptFlag: null,
       });
     }).toThrow();
   });

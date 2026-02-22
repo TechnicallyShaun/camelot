@@ -51,6 +51,8 @@ const createMockAgent = (id: string, name: string, isPrimary = false): AgentDefi
   command: `${id}-command`,
   defaultArgs: [`--${id}-arg`],
   model: null,
+  promptMethod: "none",
+  promptFlag: null,
   isPrimary,
 });
 
