@@ -70,6 +70,8 @@ export class SqliteDatabase implements Database {
         command TEXT NOT NULL,
         default_args TEXT NOT NULL DEFAULT '[]',
         model TEXT,
+        prompt_method TEXT NOT NULL DEFAULT 'none',
+        prompt_flag TEXT,
         is_primary INTEGER NOT NULL DEFAULT 0
       );
 
@@ -130,8 +132,20 @@ export class SqliteDatabase implements Database {
     this.db.exec(`
       UPDATE tickets SET stage = 'open' WHERE stage NOT IN ('open', 'closed');
     `);
+    this.migrateAgentDefinitionPromptConfig();
 
     this.seedDefaultAgents();
+  }
+
+  private migrateAgentDefinitionPromptConfig(): void {
+    const columns = this.db.prepare("PRAGMA table_info(agent_definitions)").all() as Array<{ name: string }>;
+    const columnNames = new Set(columns.map((column) => column.name));
+    if (!columnNames.has("prompt_method")) {
+      this.db.exec("ALTER TABLE agent_definitions ADD COLUMN prompt_method TEXT NOT NULL DEFAULT 'none'");
+    }
+    if (!columnNames.has("prompt_flag")) {
+      this.db.exec("ALTER TABLE agent_definitions ADD COLUMN prompt_flag TEXT");
+    }
   }
 
   private seedDefaultAgents(): void {
@@ -139,11 +153,11 @@ export class SqliteDatabase implements Database {
     if (existing.count > 0) return;
 
     const insert = this.db.prepare(
-      "INSERT INTO agent_definitions (id, name, command, default_args, model, is_primary) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO agent_definitions (id, name, command, default_args, model, prompt_method, prompt_flag, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     );
 
-    insert.run("copilot", "Copilot CLI", "copilot", JSON.stringify(["-i", "--allow-all-tools", "--allow-all-paths", "--no-ask-user"]), null, 1);
-    insert.run("claude", "Claude Code", "claude", JSON.stringify(["--dangerously-skip-permissions"]), null, 0);
+    insert.run("copilot", "Copilot CLI", "copilot", JSON.stringify(["--allow-all-tools", "--allow-all-paths", "--no-ask-user"]), null, "flag", "-i", 1);
+    insert.run("claude", "Claude Code", "claude", JSON.stringify(["--dangerously-skip-permissions"]), null, "positional", null, 0);
   }
 
   close(): void {
@@ -298,12 +312,21 @@ export class SqliteAgentRunRepository implements AgentRunRepository {
 export class SqliteAgentDefinitionRepository implements AgentDefinitionRepository {
   constructor(private readonly db: BetterSqlite3.Database) {}
 
-  create(agent: Omit<AgentDefinition, 'isPrimary'>): AgentDefinition {
+  create(agent: Omit<AgentDefinition, "id" | "isPrimary">): AgentDefinition {
+    const id = this.slugify(agent.name);
     const stmt = this.db.prepare(
-      "INSERT INTO agent_definitions (id, name, command, default_args, model) VALUES (?, ?, ?, ?, ?) RETURNING *"
+      "INSERT INTO agent_definitions (id, name, command, default_args, model, prompt_method, prompt_flag) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *"
     );
     return this.mapAgentDefinition(
-      stmt.get(agent.id, agent.name, agent.command, JSON.stringify(agent.defaultArgs), agent.model) as Record<string, unknown>
+      stmt.get(
+        id,
+        agent.name,
+        agent.command,
+        JSON.stringify(agent.defaultArgs),
+        agent.model,
+        agent.promptMethod,
+        agent.promptFlag
+      ) as Record<string, unknown>
     );
   }
 
@@ -341,6 +364,14 @@ export class SqliteAgentDefinitionRepository implements AgentDefinitionRepositor
     if (updates.model !== undefined) {
       fields.push("model = ?");
       values.push(updates.model);
+    }
+    if (updates.promptMethod !== undefined) {
+      fields.push("prompt_method = ?");
+      values.push(updates.promptMethod);
+    }
+    if (updates.promptFlag !== undefined) {
+      fields.push("prompt_flag = ?");
+      values.push(updates.promptFlag);
     }
 
     if (fields.length === 0) return false;
@@ -380,8 +411,14 @@ export class SqliteAgentDefinitionRepository implements AgentDefinitionRepositor
       command: row.command as string,
       defaultArgs: JSON.parse(row.default_args as string) as string[],
       model: row.model as string | null,
+      promptMethod: (row.prompt_method as AgentDefinition["promptMethod"]) ?? "none",
+      promptFlag: (row.prompt_flag as string | null) ?? null,
       isPrimary: Boolean(row.is_primary),
     };
+  }
+
+  private slugify(value: string): string {
+    return value.trim().toLowerCase().replace(/\s+/g, "-");
   }
 }
 

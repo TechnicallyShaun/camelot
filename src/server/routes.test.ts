@@ -58,6 +58,8 @@ const createMockAgentDefinition = (id: string, name: string, isPrimary = false):
   command: "test-command",
   defaultArgs: ["--test"],
   model: null,
+  promptMethod: "none",
+  promptFlag: null,
   isPrimary,
 });
 
@@ -432,11 +434,12 @@ describe("API Routes", () => {
         vi.mocked(mockAgentDefinitions.create).mockReturnValue(newAgent);
 
         const agentData = {
-          id: "new-agent",
           name: "New Agent",
           command: "new-command",
           defaultArgs: ["--arg1", "--arg2"],
           model: "gpt-4",
+          promptMethod: "flag",
+          promptFlag: "-i",
         };
 
         const response = await request(app)
@@ -446,11 +449,12 @@ describe("API Routes", () => {
         expect(response.status).toBe(201);
         expect(response.body).toEqual(newAgent);
         expect(mockAgentDefinitions.create).toHaveBeenCalledWith({
-          id: "new-agent",
           name: "New Agent",
           command: "new-command",
           defaultArgs: ["--arg1", "--arg2"],
           model: "gpt-4",
+          promptMethod: "flag",
+          promptFlag: "-i",
         });
       });
 
@@ -459,7 +463,6 @@ describe("API Routes", () => {
         vi.mocked(mockAgentDefinitions.create).mockReturnValue(newAgent);
 
         const agentData = {
-          id: "new-agent",
           name: "New Agent",
           command: "new-command",
           defaultArgs: ["--arg1", "--arg2"],
@@ -471,11 +474,12 @@ describe("API Routes", () => {
 
         expect(response.status).toBe(201);
         expect(mockAgentDefinitions.create).toHaveBeenCalledWith({
-          id: "new-agent",
           name: "New Agent",
           command: "new-command",
           defaultArgs: ["--arg1", "--arg2"],
           model: null,
+          promptMethod: "none",
+          promptFlag: null,
         });
       });
 
@@ -485,7 +489,7 @@ describe("API Routes", () => {
           .send({ name: "Incomplete Agent" });
 
         expect(response.status).toBe(400);
-        expect(response.body).toEqual({ error: "id, name, command, and defaultArgs are required" });
+        expect(response.body).toEqual({ error: "name, command, and defaultArgs are required" });
         expect(mockAgentDefinitions.create).not.toHaveBeenCalled();
       });
 
@@ -493,14 +497,13 @@ describe("API Routes", () => {
         const response = await request(app)
           .post("/api/agents")
           .send({
-            id: "test",
             name: "Test Agent",
             command: "test",
             defaultArgs: "not-an-array",
           });
 
         expect(response.status).toBe(400);
-        expect(response.body).toEqual({ error: "id, name, command, and defaultArgs are required" });
+        expect(response.body).toEqual({ error: "name, command, and defaultArgs are required" });
       });
 
       it("returns 400 when agent ID already exists", async () => {
@@ -511,7 +514,6 @@ describe("API Routes", () => {
         const response = await request(app)
           .post("/api/agents")
           .send({
-            id: "existing-agent",
             name: "Test Agent",
             command: "test",
             defaultArgs: ["--test"],
@@ -519,6 +521,20 @@ describe("API Routes", () => {
 
         expect(response.status).toBe(400);
         expect(response.body).toEqual({ error: "Agent ID already exists" });
+      });
+
+      it("returns 400 when promptMethod is flag without promptFlag", async () => {
+        const response = await request(app)
+          .post("/api/agents")
+          .send({
+            name: "Test Agent",
+            command: "test",
+            defaultArgs: ["--test"],
+            promptMethod: "flag",
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({ error: "promptFlag is required when promptMethod is flag" });
       });
     });
 

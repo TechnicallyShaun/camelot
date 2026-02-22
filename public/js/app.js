@@ -1530,7 +1530,9 @@ class CamelotApp {
     document.getElementById('agentForm').reset();
     document.getElementById('agentModalTitle').textContent = 'Create New Agent';
     document.getElementById('saveAgentBtn').textContent = 'Create Agent';
-    document.getElementById('agentId').disabled = false;
+    document.getElementById('agentPromptMethod').value = 'none';
+    document.getElementById('agentPromptFlag').value = '';
+    this.togglePromptFlagField();
     this.editingAgentId = null;
     this.openModal('agentModal');
   }
@@ -1539,13 +1541,14 @@ class CamelotApp {
     const agent = this.agents.find(a => a.id === agentId);
     if (!agent) return;
 
-    document.getElementById('agentId').value = agent.id;
     document.getElementById('agentName').value = agent.name;
     document.getElementById('agentCommand').value = agent.command;
     document.getElementById('agentArgs').value = agent.defaultArgs.join(' ');
     document.getElementById('agentModel').value = agent.model || '';
+    document.getElementById('agentPromptMethod').value = agent.promptMethod || 'none';
+    document.getElementById('agentPromptFlag').value = agent.promptFlag || '';
+    this.togglePromptFlagField();
     
-    document.getElementById('agentId').disabled = true;
     document.getElementById('agentModalTitle').textContent = 'Edit Agent';
     document.getElementById('saveAgentBtn').textContent = 'Update Agent';
     
@@ -2011,6 +2014,12 @@ class CamelotApp {
       });
     }
 
+    const promptMethodSelect = document.getElementById('agentPromptMethod');
+    if (promptMethodSelect) {
+      promptMethodSelect.addEventListener('change', () => this.togglePromptFlagField());
+      this.togglePromptFlagField();
+    }
+
     // Cancel buttons
     document.querySelectorAll('#cancelProjectBtn, #cancelSkillBtn, #cancelToolBtn, #cancelServiceBtn, #cancelAgentBtn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -2186,16 +2195,24 @@ class CamelotApp {
   }
 
   async handleAgentSubmission(form) {
+    const promptMethod = document.getElementById('agentPromptMethod').value;
+    const promptFlag = document.getElementById('agentPromptFlag').value.trim();
     const agentData = {
-      id: document.getElementById('agentId').value,
       name: document.getElementById('agentName').value,
       command: document.getElementById('agentCommand').value,
       defaultArgs: document.getElementById('agentArgs').value.split(' ').filter(Boolean),
-      model: document.getElementById('agentModel').value || null
+      model: document.getElementById('agentModel').value || null,
+      promptMethod,
+      promptFlag: promptMethod === 'flag' ? promptFlag : null,
     };
 
-    if (!agentData.id || !agentData.name || !agentData.command) {
-      this.showError('Please fill in agent ID, name, and command');
+    if (!agentData.name || !agentData.command) {
+      this.showError('Please fill in agent name and command');
+      return;
+    }
+
+    if (promptMethod === 'flag' && !promptFlag) {
+      this.showError('Prompt flag is required when prompt method is flag');
       return;
     }
 
@@ -2225,6 +2242,20 @@ class CamelotApp {
       const submitBtn = form.querySelector('button[type="submit"]');
       submitBtn.disabled = false;
       submitBtn.textContent = this.editingAgentId ? 'Update Agent' : 'Create Agent';
+    }
+  }
+
+  togglePromptFlagField() {
+    const promptMethod = document.getElementById('agentPromptMethod')?.value;
+    const promptFlagGroup = document.getElementById('agentPromptFlagGroup');
+    const promptFlagInput = document.getElementById('agentPromptFlag');
+    if (!promptFlagGroup || !promptFlagInput) return;
+
+    const show = promptMethod === 'flag';
+    promptFlagGroup.style.display = show ? '' : 'none';
+    promptFlagInput.required = show;
+    if (!show) {
+      promptFlagInput.value = '';
     }
   }
 

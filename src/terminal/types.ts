@@ -1,5 +1,7 @@
+import type { AgentDefinition } from "../db/types.js";
+
 export interface TerminalLaunchConfig {
-  readonly agent: string;
+  readonly agent: AgentDefinition;
   readonly prompt?: string;
   readonly cwd: string;
   readonly title?: string;

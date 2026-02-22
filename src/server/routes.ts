@@ -8,6 +8,10 @@ import type { StandupGenerator } from "../standup/standup-generator.js";
 import type { AcceptanceTestRunner } from "../acceptance/test-runner.js";
 import type { TicketReviewer } from "../review/ticket-reviewer.js";
 
+function slugify(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, "-");
+}
+
 export interface RoutesDeps {
   readonly projects: ProjectRepository;
   readonly tickets: TicketRepository;
@@ -368,21 +372,43 @@ export function createApiRouter(deps: RoutesDeps): Router {
   });
 
   router.post("/agents", (req: Request, res: Response) => {
-    const { id, name, command, defaultArgs, model } = req.body as {
-      id?: string;
+    const { name, command, defaultArgs, model, promptMethod, promptFlag } = req.body as {
       name?: string;
       command?: string;
       defaultArgs?: string[];
       model?: string | null;
+      promptMethod?: "positional" | "flag" | "none";
+      promptFlag?: string | null;
     };
 
-    if (!id || !name || !command || !Array.isArray(defaultArgs)) {
-      res.status(400).json({ error: "id, name, command, and defaultArgs are required" });
+    if (!name || !command || !Array.isArray(defaultArgs)) {
+      res.status(400).json({ error: "name, command, and defaultArgs are required" });
+      return;
+    }
+    if (promptMethod && !["none", "positional", "flag"].includes(promptMethod)) {
+      res.status(400).json({ error: "promptMethod must be one of: none, positional, flag" });
+      return;
+    }
+    if ((promptMethod ?? "none") === "flag" && (!promptFlag || !promptFlag.trim())) {
+      res.status(400).json({ error: "promptFlag is required when promptMethod is flag" });
+      return;
+    }
+
+    const generatedId = slugify(name);
+    if (!generatedId) {
+      res.status(400).json({ error: "name must contain non-space characters" });
       return;
     }
 
     try {
-      const agent = deps.agentDefinitions.create({ id, name, command, defaultArgs, model: model ?? null });
+      const agent = deps.agentDefinitions.create({
+        name,
+        command,
+        defaultArgs,
+        model: model ?? null,
+        promptMethod: promptMethod ?? "none",
+        promptFlag: (promptMethod ?? "none") === "flag" ? (promptFlag ?? null) : null,
+      });
       res.status(201).json(agent);
     } catch (error) {
       res.status(400).json({ error: "Agent ID already exists" });
@@ -396,7 +422,21 @@ export function createApiRouter(deps: RoutesDeps): Router {
       command: string;
       defaultArgs: string[];
       model: string | null;
+      promptMethod: "positional" | "flag" | "none";
+      promptFlag: string | null;
     }>;
+
+    if (updates.promptMethod && !["none", "positional", "flag"].includes(updates.promptMethod)) {
+      res.status(400).json({ error: "promptMethod must be one of: none, positional, flag" });
+      return;
+    }
+    if (updates.promptMethod === "flag" && (!updates.promptFlag || !updates.promptFlag.trim())) {
+      res.status(400).json({ error: "promptFlag is required when promptMethod is flag" });
+      return;
+    }
+    if (updates.promptMethod && updates.promptMethod !== "flag" && updates.promptFlag === undefined) {
+      updates.promptFlag = null;
+    }
 
     const success = deps.agentDefinitions.update(id, updates);
     if (!success) {
