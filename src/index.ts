@@ -16,6 +16,7 @@ import { AcceptanceTestRunner, StubAcceptanceTestExecutor } from "./acceptance/t
 import { TicketReviewer } from "./review/ticket-reviewer.js";
 import { WorkloadAdapterRegistry } from "./workload/adapter-registry.js";
 import { GitHubWorkloadAdapter } from "./workload/github-adapter.js";
+import { DummyWorkloadAdapter } from "./workload/dummy-adapter.js";
 import { ProcessAgentSpawner } from "./agents/spawner.js";
 import { createApp } from "./server/app.js";
 import { TerminalManager } from "./terminal/manager.js";
@@ -74,6 +75,12 @@ for (const adapter of workloadAdapterRepository.findAll()) {
   } catch (error) {
     logger.warn({ error, adapterId: adapter.id }, "Skipping workload adapter with malformed config");
   }
+}
+
+// Register dummy adapter if none configured (for demo/testing)
+if (workloadAdapters.list().length === 0) {
+  workloadAdapters.register("dummy", new DummyWorkloadAdapter(), true);
+  logger.info("Registered dummy workload adapter (no adapters configured)");
 }
 
 // Create skill publisher
