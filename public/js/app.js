@@ -1318,7 +1318,7 @@ class CamelotApp {
       }
 
       listEl.innerHTML = tickets.map(ticket => `
-        <div class="workload-ticket" data-ticket-id="${ticket.id}" onclick="app.showWorkloadTicket('${ticket.id}')">
+        <div class="workload-ticket" data-ticket-id="${ticket.id}" onclick="camelot.showWorkloadTicket('${ticket.id}')">
           <div class="workload-ticket-header">
             <span class="workload-status-badge workload-status-${(ticket.status || 'unknown').toLowerCase().replace(/\s+/g, '-')}">${ticket.status || 'Unknown'}</span>
             <span class="workload-ticket-title">${ticket.title}</span>
@@ -1357,7 +1357,7 @@ class CamelotApp {
             <option value="in_progress">In Progress</option>
             <option value="closed">Closed</option>
           </select>
-          <button class="btn btn-primary" onclick="app.changeWorkloadTicketStatus('${ticketId}')">Update</button>
+          <button class="btn btn-primary" onclick="camelot.changeWorkloadTicketStatus('${ticketId}')">Update</button>
           <button class="btn btn-secondary" onclick="document.getElementById('workloadDetail').style.display='none'">Close</button>
         </div>
       `;
